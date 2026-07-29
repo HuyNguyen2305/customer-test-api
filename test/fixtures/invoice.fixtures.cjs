@@ -1,0 +1,32 @@
+module.exports = {
+  invoiceOpen: {
+    customerId: '11111111-1111-1111-1111-111111111111',
+    invoiceNumber: 'INV-1001',
+    amount: 250,
+    balanceDue: 250,
+    status: 'open',
+    issueDate: '2026-06-01',
+    dueDate: '2026-06-30',
+    currency: 'USD',
+  },
+  invoicePaid: {
+    customerId: '11111111-1111-1111-1111-111111111111',
+    invoiceNumber: 'INV-1002',
+    amount: 100,
+    balanceDue: 0,
+    status: 'paid',
+    issueDate: '2026-05-01',
+    dueDate: '2026-05-31',
+    currency: 'USD',
+  },
+  invoiceOtherCustomer: {
+    customerId: '22222222-2222-2222-2222-222222222222',
+    invoiceNumber: 'INV-2001',
+    amount: 75,
+    balanceDue: 75,
+    status: 'open',
+    issueDate: '2026-06-05',
+    dueDate: '2026-07-05',
+    currency: 'USD',
+  },
+};
