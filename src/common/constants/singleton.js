@@ -6,6 +6,21 @@ export const REPOSITORY_KEYS = {
   DOCUMENT_REPOSITORY: 'documentRepository',
   WORK_ORDER_REPOSITORY: 'workOrderRepository',
   PAYMENT_OPTION_REPOSITORY: 'paymentOptionRepository',
+  BOOKING_REPOSITORY: 'bookingRepository',
+  SERVICE_REPOSITORY: 'serviceRepository',
+  SERVICE_RECURRENCE_REPOSITORY: 'serviceRecurrenceRepository',
+  TODO_LIST_REPOSITORY: 'todoListRepository',
+  MATERIAL_REPOSITORY: 'materialRepository',
+  JOB_MATERIAL_REPOSITORY: 'jobMaterialRepository',
+  JOB_TODO_LIST_REPOSITORY: 'jobTodoListRepository',
+  JOB_TODO_REPOSITORY: 'jobTodoRepository',
+  CUSTOMER_INVOICE_REPOSITORY: 'customerInvoiceRepository',
+  INVOICE_FREQUENCY_REPOSITORY: 'invoiceFrequencyRepository',
+  SERVICE_INVOICE_REPOSITORY: 'serviceInvoiceRepository',
+  CUSTOMER_LEDGER_ENTRY_REPOSITORY: 'customerLedgerEntryRepository',
+  CUSTOMER_REPOSITORY: 'customerRepository',
+  CUSTOMER_ESTIMATE_REPOSITORY: 'customerEstimateRepository',
+  CUSTOMER_PAYMENT_METHOD_REPOSITORY: 'customerPaymentMethodRepository',
 };
 
 export const SERVICE_KEYS = {
@@ -16,6 +31,18 @@ export const SERVICE_KEYS = {
   DOCUMENT_SERVICE: 'documentService',
   WORK_ORDER_SERVICE: 'workOrderService',
   PAYMENT_OPTION_SERVICE: 'paymentOptionService',
+  RECURRING_BOOKING_GENERATOR_SERVICE: 'recurringBookingGeneratorService',
+  JOB_SNAPSHOT_SERVICE: 'jobSnapshotService',
+  JOB_SYNC_SERVICE: 'jobSyncService',
+  JOB_MATERIAL_SERVICE: 'jobMaterialService',
+  JOB_TODO_SERVICE: 'jobTodoService',
+  INVOICE_GENERATION_SERVICE: 'invoiceGenerationService',
+  LEDGER_SERVICE: 'ledgerService',
+  SERVICE_LIFECYCLE_SERVICE: 'serviceLifecycleService',
+  CUSTOMER_SERVICE: 'customerService',
+  CUSTOMER_INVOICE_SERVICE: 'customerInvoiceService',
+  CUSTOMER_ESTIMATE_SERVICE: 'customerEstimateService',
+  CUSTOMER_PAYMENT_METHOD_SERVICE: 'customerPaymentMethodService',
 };
 
 export const CONTROLLER_KEYS = {
@@ -26,4 +53,9 @@ export const CONTROLLER_KEYS = {
   DOCUMENT_CONTROLLER: 'documentController',
   WORK_ORDER_CONTROLLER: 'workOrderController',
   PAYMENT_OPTION_CONTROLLER: 'paymentOptionController',
+  CUSTOMER_CONTROLLER: 'customerController',
+  CUSTOMER_PAYMENT_METHOD_CONTROLLER: 'customerPaymentMethodController',
+  CUSTOMER_INVOICE_CONTROLLER: 'customerInvoiceController',
+  CUSTOMER_ESTIMATE_CONTROLLER: 'customerEstimateController',
+  CUSTOMER_LEDGER_CONTROLLER: 'customerLedgerController',
 };

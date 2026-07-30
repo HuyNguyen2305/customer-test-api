@@ -1,0 +1,1 @@
+export const BOOKING_GENERATION_WINDOW_DAYS = 30;
