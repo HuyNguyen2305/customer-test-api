@@ -26,6 +26,7 @@ import CustomerLedgerEntryRepository from '#repositories/customer-ledger-entry.r
 import CustomerRepository from '#repositories/customer.repository.js';
 import CustomerEstimateRepository from '#repositories/customer-estimate.repository.js';
 import CustomerPaymentMethodRepository from '#repositories/customer-payment-method.repository.js';
+import CustomerDocumentRepository from '#repositories/customer-document.repository.js';
 
 import AuthService from '#service/auth.service.js';
 import BalanceService from '#service/balance.service.js';
@@ -46,6 +47,7 @@ import CustomerService from '#service/customer.service.js';
 import CustomerInvoiceService from '#service/customer-invoice.service.js';
 import CustomerEstimateService from '#service/customer-estimate.service.js';
 import CustomerPaymentMethodService from '#service/customer-payment-method.service.js';
+import CustomerDocumentService from '#service/customer-document.service.js';
 
 import AuthController from '#controller/auth.controller.js';
 import BalanceController from '#controller/balance.controller.js';
@@ -59,6 +61,7 @@ import CustomerPaymentMethodController from '#controller/customer-payment-method
 import CustomerInvoiceController from '#controller/customer-invoice.controller.js';
 import CustomerEstimateController from '#controller/customer-estimate.controller.js';
 import CustomerLedgerController from '#controller/customer-ledger.controller.js';
+import CustomerDocumentController from '#controller/customer-document.controller.js';
 
 const container = createContainer({ injectionMode: InjectionMode.PROXY });
 
@@ -88,6 +91,9 @@ container.register({
   customerEstimateModel: asValue(models.CustomerEstimate),
   customerEstimateItemModel: asValue(models.CustomerEstimateItem),
   customerPaymentMethodModel: asValue(models.CustomerPaymentMethod),
+  customerDocumentModel: asValue(models.CustomerDocument),
+  serviceDocumentLibraryModel: asValue(models.ServiceDocumentLibrary),
+  pdfModel: asValue(models.Pdf),
 
   [REPOSITORY_KEYS.AUTH_REPOSITORY]: asClass(AuthRepository).scoped(),
   [REPOSITORY_KEYS.BALANCE_REPOSITORY]: asClass(BalanceRepository).scoped(),
@@ -111,6 +117,7 @@ container.register({
   [REPOSITORY_KEYS.CUSTOMER_REPOSITORY]: asClass(CustomerRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_ESTIMATE_REPOSITORY]: asClass(CustomerEstimateRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_PAYMENT_METHOD_REPOSITORY]: asClass(CustomerPaymentMethodRepository).scoped(),
+  [REPOSITORY_KEYS.CUSTOMER_DOCUMENT_REPOSITORY]: asClass(CustomerDocumentRepository).scoped(),
 
   [SERVICE_KEYS.AUTH_SERVICE]: asClass(AuthService).scoped(),
   [SERVICE_KEYS.BALANCE_SERVICE]: asClass(BalanceService).scoped(),
@@ -131,6 +138,7 @@ container.register({
   [SERVICE_KEYS.CUSTOMER_INVOICE_SERVICE]: asClass(CustomerInvoiceService).scoped(),
   [SERVICE_KEYS.CUSTOMER_ESTIMATE_SERVICE]: asClass(CustomerEstimateService).scoped(),
   [SERVICE_KEYS.CUSTOMER_PAYMENT_METHOD_SERVICE]: asClass(CustomerPaymentMethodService).scoped(),
+  [SERVICE_KEYS.CUSTOMER_DOCUMENT_SERVICE]: asClass(CustomerDocumentService).scoped(),
 
   [CONTROLLER_KEYS.AUTH_CONTROLLER]: asClass(AuthController).scoped(),
   [CONTROLLER_KEYS.BALANCE_CONTROLLER]: asClass(BalanceController).scoped(),
@@ -144,6 +152,7 @@ container.register({
   [CONTROLLER_KEYS.CUSTOMER_INVOICE_CONTROLLER]: asClass(CustomerInvoiceController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_ESTIMATE_CONTROLLER]: asClass(CustomerEstimateController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_LEDGER_CONTROLLER]: asClass(CustomerLedgerController).scoped(),
+  [CONTROLLER_KEYS.CUSTOMER_DOCUMENT_CONTROLLER]: asClass(CustomerDocumentController).scoped(),
 });
 
 export default container;

@@ -27,6 +27,14 @@ export default (sequelize, DataTypes) => {
     },
     {
       tableName: 'customer_payment_methods',
+      indexes: [
+        {
+          unique: true,
+          fields: ['customerId'],
+          where: { isDefault: true },
+          name: 'customer_payment_methods_customer_id_default_unique_idx',
+        },
+      ],
     },
   );
 };

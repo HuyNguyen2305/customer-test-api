@@ -14,11 +14,35 @@ const customerB = {
   mobile: '555-0002',
 };
 
+const customerC = {
+  id: 'cccccccc-9999-8888-7777-666666666666',
+  firstName: 'Carol',
+  lastName: 'Carter',
+  email: 'carol@example.com',
+  mobile: '555-0003',
+};
+
 const addressA = {
   id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
   customerId: customerA.id,
   label: 'Home',
   line1: '1 Main St',
+  isDefault: true,
+};
+
+const addressA2 = {
+  id: 'cccccccc-dddd-eeee-ffff-000000000000',
+  customerId: customerA.id,
+  label: 'Work',
+  line1: '2 Market St',
+  isDefault: false,
+};
+
+const addressB = {
+  id: 'cccccccc-1111-2222-3333-444444444444',
+  customerId: customerB.id,
+  label: 'Home',
+  line1: '9 Bob St',
   isDefault: true,
 };
 
@@ -107,6 +131,22 @@ const paymentMethodA = {
   isDefault: true,
 };
 
+const paymentMethodA2 = {
+  id: '22222222-4444-5555-6666-777777777777',
+  customerId: customerA.id,
+  type: 'bank',
+  token: 'tok_bank_5678',
+  isDefault: false,
+};
+
+const paymentMethodB = {
+  id: '22222222-5555-6666-7777-888888888888',
+  customerId: customerB.id,
+  type: 'card',
+  token: 'tok_visa_9999',
+  isDefault: true,
+};
+
 const ledgerChargeA = {
   id: '22222222-3333-4444-5555-999999999999',
   customerId: customerA.id,
@@ -121,10 +161,53 @@ const ledgerPaymentA = {
   amount: 40,
 };
 
+const ledgerChargeA2 = {
+  id: '33333333-4444-5555-6666-888888888888',
+  customerId: customerA.id,
+  type: 'charge',
+  amount: 30,
+};
+
+const ledgerPaymentA2 = {
+  id: '33333333-4444-5555-6666-999999999999',
+  customerId: customerA.id,
+  type: 'payment',
+  amount: 10,
+};
+
+const serviceDocLibraryA = {
+  id: '44444444-5555-6666-7777-888888888888',
+  name: 'Service Agreement',
+};
+
+const pdfA = {
+  id: '44444444-5555-6666-7777-999999999999',
+  name: 'Inspection Report.pdf',
+};
+
+const customerDocumentA = {
+  id: '55555555-6666-7777-8888-999999999999',
+  customerId: customerA.id,
+  bookingId: bookingA.id,
+  documentId: serviceDocLibraryA.id,
+  type: 'doc',
+};
+
+const customerDocumentB = {
+  id: '66666666-7777-8888-9999-aaaaaaaaaaaa',
+  customerId: customerB.id,
+  bookingId: bookingB.id,
+  pdfId: pdfA.id,
+  type: 'pdf',
+};
+
 module.exports = {
   customerA,
   customerB,
+  customerC,
   addressA,
+  addressA2,
+  addressB,
   service1,
   item1,
   bookingA,
@@ -136,6 +219,14 @@ module.exports = {
   estimateB,
   estimateItemA,
   paymentMethodA,
+  paymentMethodA2,
+  paymentMethodB,
   ledgerChargeA,
   ledgerPaymentA,
+  ledgerChargeA2,
+  ledgerPaymentA2,
+  serviceDocLibraryA,
+  pdfA,
+  customerDocumentA,
+  customerDocumentB,
 };

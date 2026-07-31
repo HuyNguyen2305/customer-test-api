@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 
-const getMock = jest.fn();
+const requireCustomerIdMock = jest.fn();
 const createReadStreamMock = jest.fn();
 
-jest.unstable_mockModule('#common/request-context.js', () => ({
-  requestContext: { get: getMock },
+jest.unstable_mockModule('#common/require-customer-id.js', () => ({
+  requireCustomerId: requireCustomerIdMock,
 }));
 
 jest.unstable_mockModule('node:fs', () => ({
@@ -13,15 +13,16 @@ jest.unstable_mockModule('node:fs', () => ({
 }));
 
 const { default: DocumentController } = await import('#controller/document.controller.js');
+const { UnauthorizedError } = await import('#configs/error.js');
 
 describe('DocumentController.downloadDocument', () => {
   beforeEach(() => {
-    getMock.mockReset();
+    requireCustomerIdMock.mockReset();
     createReadStreamMock.mockReset();
   });
 
   it('streams the file with the correct headers', async () => {
-    getMock.mockReturnValue({ customerId: 'c1' });
+    requireCustomerIdMock.mockReturnValue('c1');
     const document = { originalFileName: 'contract.pdf', type: 'application/pdf' };
     const stream = { pipe: jest.fn() };
     createReadStreamMock.mockReturnValue(stream);
@@ -39,5 +40,18 @@ describe('DocumentController.downloadDocument', () => {
     expect(reply.header).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="contract.pdf"');
     expect(reply.type).toHaveBeenCalledWith('application/pdf');
     expect(reply.send).toHaveBeenCalledWith(stream);
+  });
+
+  it('rejects when unauthenticated', async () => {
+    requireCustomerIdMock.mockImplementation(() => {
+      throw new UnauthorizedError('Authentication required');
+    });
+    const controller = Object.create(DocumentController.prototype);
+    controller.documentService = { downloadDocument: jest.fn() };
+
+    await expect(
+      controller.downloadDocument({ params: { id: 'd1' } }, { header: jest.fn(), type: jest.fn(), send: jest.fn() }),
+    ).rejects.toThrow(UnauthorizedError);
+    expect(controller.documentService.downloadDocument).not.toHaveBeenCalled();
   });
 });

@@ -1,18 +1,19 @@
 import { jest } from '@jest/globals';
 
-const getMock = jest.fn();
+const requireCustomerIdMock = jest.fn();
 
-jest.unstable_mockModule('#common/request-context.js', () => ({
-  requestContext: { get: getMock },
+jest.unstable_mockModule('#common/require-customer-id.js', () => ({
+  requireCustomerId: requireCustomerIdMock,
 }));
 
 const { default: DocumentController } = await import('#controller/document.controller.js');
+const { UnauthorizedError } = await import('#configs/error.js');
 
 describe('DocumentController.listDocuments', () => {
-  beforeEach(() => getMock.mockReset());
+  beforeEach(() => requireCustomerIdMock.mockReset());
 
   it('sends the documents and pagination for the identity customerId', async () => {
-    getMock.mockReturnValue({ customerId: 'c1' });
+    requireCustomerIdMock.mockReturnValue('c1');
     const documents = [{ id: 'd1' }];
     const pagination = { page: 1, pageSize: 20, total: 1, totalPages: 1 };
     const controller = Object.create(DocumentController.prototype);
@@ -31,18 +32,14 @@ describe('DocumentController.listDocuments', () => {
     });
   });
 
-  it('passes undefined customerId when there is no identity', async () => {
-    getMock.mockReturnValue(undefined);
-    const controller = Object.create(DocumentController.prototype);
-    controller.documentService = { listDocuments: jest.fn().mockResolvedValue({ documents: [], pagination: {} }) };
-    const reply = { send: jest.fn() };
-    const request = { query: {} };
-
-    await controller.listDocuments(request, reply);
-
-    expect(controller.documentService.listDocuments).toHaveBeenCalledWith(undefined, {
-      page: undefined,
-      pageSize: undefined,
+  it('rejects when unauthenticated', async () => {
+    requireCustomerIdMock.mockImplementation(() => {
+      throw new UnauthorizedError('Authentication required');
     });
+    const controller = Object.create(DocumentController.prototype);
+    controller.documentService = { listDocuments: jest.fn() };
+
+    await expect(controller.listDocuments({ query: {} }, { send: jest.fn() })).rejects.toThrow(UnauthorizedError);
+    expect(controller.documentService.listDocuments).not.toHaveBeenCalled();
   });
 });

@@ -47,6 +47,14 @@ export default (sequelize, DataTypes) => {
     },
     {
       tableName: 'addresses',
+      indexes: [
+        {
+          unique: true,
+          fields: ['customerId'],
+          where: { isDefault: true },
+          name: 'addresses_customer_id_default_unique_idx',
+        },
+      ],
     },
   );
 };

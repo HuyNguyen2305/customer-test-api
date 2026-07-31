@@ -19,8 +19,8 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
       },
-      // Polymorphic reference (e.g. a customer_invoice or customer_payment_method id) -
-      // the spec leaves the target table unspecified, so no DB-level FK is applied here.
+      // References customer_invoices.id (both charge and payment entries are
+      // recorded against an invoice today; enforced via a DB-level FK).
       referenceId: {
         type: DataTypes.UUID,
         allowNull: true,

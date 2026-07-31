@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { requestContext } from '#common/request-context.js';
+import { requireCustomerId } from '#common/require-customer-id.js';
 import { BadRequestError } from '#configs/error.js';
 
 class DocumentController {
@@ -8,7 +8,7 @@ class DocumentController {
   }
 
   async listDocuments(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const { page, pageSize } = request.query;
     const { documents, pagination } = await this.documentService.listDocuments(customerId, {
       page,
@@ -18,13 +18,13 @@ class DocumentController {
   }
 
   async getDocumentById(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const data = await this.documentService.getDocumentById(request.params.id, customerId);
     reply.send({ success: true, message: 'Document retrieved', data });
   }
 
   async downloadDocument(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const { document, absolutePath } = await this.documentService.downloadDocument(request.params.id, customerId);
     reply
       .header('Content-Disposition', `attachment; filename="${document.originalFileName}"`)
@@ -33,7 +33,7 @@ class DocumentController {
   }
 
   async createDocument(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const filePart = request.body?.file;
     if (!filePart) throw new BadRequestError('A file is required');
 

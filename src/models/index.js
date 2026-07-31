@@ -229,6 +229,7 @@ CustomerDocument.belongsTo(Pdf, { foreignKey: 'pdfId' });
 
 Customer.hasMany(CustomerLedgerEntry, { foreignKey: 'customerId' });
 CustomerLedgerEntry.belongsTo(Customer, { foreignKey: 'customerId' });
+CustomerLedgerEntry.belongsTo(CustomerInvoice, { foreignKey: 'referenceId' });
 
 Customer.hasMany(CustomerPaymentMethod, { foreignKey: 'customerId' });
 CustomerPaymentMethod.belongsTo(Customer, { foreignKey: 'customerId' });

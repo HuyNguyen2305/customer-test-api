@@ -21,10 +21,8 @@ class LedgerService {
     });
   }
 
-  async getCustomerBalance(customerId) {
-    const charges = await this.customerLedgerEntryRepository.sumByCustomerAndType(customerId, 'charge');
-    const payments = await this.customerLedgerEntryRepository.sumByCustomerAndType(customerId, 'payment');
-    return charges - payments;
+  getCustomerBalance(customerId) {
+    return this.customerLedgerEntryRepository.getBalanceByCustomer(customerId);
   }
 
   async listLedger(customerId, { page = 1, pageSize = 20 } = {}) {
