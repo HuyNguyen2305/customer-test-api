@@ -43,11 +43,30 @@ describe('CustomerDocumentController.downloadDocument', () => {
     expect(controller.customerDocumentService.downloadDocument).toHaveBeenCalledWith('cd1', 'c1');
     expect(createReadStreamMock).toHaveBeenCalledWith('/uploads/contract.pdf');
     expect(reply.header).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="contract.pdf"');
-    expect(reply.type).toHaveBeenCalledWith('application/octet-stream');
+    expect(reply.type).toHaveBeenCalledWith('application/pdf');
     expect(reply.send).toHaveBeenCalledWith(stream);
     // Fastify silently drops streamed payloads from an async handler unless the
     // reply.send(...) chain is returned, so this return is load-bearing, not stylistic.
     expect(result).toBe(sendResult);
+  });
+
+  it('reports the correct content-type for a .docx file', async () => {
+    requireCustomerIdMock.mockReturnValue('c1');
+    const file = { originalFileName: 'estimate-terms.docx' };
+    createReadStreamMock.mockReturnValue({ pipe: jest.fn() });
+    const controller = Object.create(CustomerDocumentController.prototype);
+    controller.customerDocumentService = {
+      downloadDocument: jest.fn().mockResolvedValue({ file, absolutePath: '/uploads/estimate-terms.docx' }),
+    };
+    const reply = {
+      header: jest.fn().mockReturnThis(),
+      type: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    await controller.downloadDocument({ params: { id: 'cd2' } }, reply);
+
+    expect(reply.type).toHaveBeenCalledWith('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   });
 
   it('rejects when unauthenticated', async () => {

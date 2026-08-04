@@ -1,6 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';
+import crypto from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import { seedWithTransaction, TEST_SCHEMA } from '../../helpers/seed-fixtures.js';
 import fixtures from '../../fixtures/customer-portal.fixtures.cjs';
 
@@ -59,7 +61,13 @@ const allFixtures = {
 };
 
 function headersFor(customerId) {
-  return { 'x-tenant-schema': TEST_SCHEMA, ...(customerId ? { 'x-customer-id': customerId } : {}) };
+  if (!customerId) return { 'x-tenant-schema': TEST_SCHEMA };
+
+  const jti = crypto.randomUUID();
+  const token = jwt.sign({ customerId, username: 'test-user', jti }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+  return { 'x-tenant-schema': TEST_SCHEMA, authorization: `Bearer ${token}` };
 }
 
 describe('Customer portal GET endpoints (integration)', () => {
@@ -205,7 +213,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.id).toBe(invoiceA.id);
-      expect(body.data.CustomerInvoiceItems).toHaveLength(1);
+      expect(body.data.items).toHaveLength(1);
 
       await app.close();
     });
@@ -276,7 +284,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.id).toBe(estimateA.id);
-      expect(body.data.CustomerEstimateItems).toHaveLength(1);
+      expect(body.data.items).toHaveLength(1);
 
       await app.close();
     });
@@ -865,7 +873,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       });
     });
 
-    it("returns 404 when the address belongs to another customer", async () => {
+    it('returns 404 when the address belongs to another customer', async () => {
       await seedWithTransaction(fixturesWithAddresses, async () => {
         const app = await buildApp();
         await app.ready();
@@ -977,7 +985,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       });
     });
 
-    it("returns 404 when the payment method belongs to another customer", async () => {
+    it('returns 404 when the payment method belongs to another customer', async () => {
       await seedWithTransaction(fixturesWithPaymentMethods, async () => {
         const app = await buildApp();
         await app.ready();

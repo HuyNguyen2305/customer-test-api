@@ -1,5 +1,31 @@
 import { NotFoundError } from '#configs/error.js';
 
+function toInvoiceData(invoice) {
+  return {
+    id: invoice.id,
+    bookingId: invoice.bookingId,
+    customerId: invoice.customerId,
+    sourceInvoiceId: invoice.sourceInvoiceId,
+    discountValue: invoice.discountValue,
+    discountType: invoice.discountType,
+    termsText: invoice.termsText,
+    notesText: invoice.notesText,
+    status: invoice.status,
+    balanceDue: invoice.balanceDue,
+    ...(invoice.items && {
+      items: invoice.items.map((item) => ({
+        id: item.id,
+        itemId: item.itemId,
+        description: item.description,
+        cost: item.cost,
+        taxRateId: item.taxRateId,
+        qty: item.qty,
+        sortOrder: item.sortOrder,
+      })),
+    }),
+  };
+}
+
 class CustomerInvoiceService {
   constructor({ customerInvoiceRepository }) {
     this.customerInvoiceRepository = customerInvoiceRepository;
@@ -12,7 +38,7 @@ class CustomerInvoiceService {
       offset,
     });
     return {
-      invoices: rows,
+      invoices: rows.map(toInvoiceData),
       pagination: { page, pageSize, total: count, totalPages: Math.ceil(count / pageSize) },
     };
   }
@@ -20,7 +46,7 @@ class CustomerInvoiceService {
   async getInvoiceById(id, customerId) {
     const invoice = await this.customerInvoiceRepository.findByIdForCustomer(id, customerId);
     if (!invoice) throw new NotFoundError('Invoice not found');
-    return invoice;
+    return toInvoiceData(invoice);
   }
 }
 

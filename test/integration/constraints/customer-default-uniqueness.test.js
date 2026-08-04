@@ -2,7 +2,8 @@ import { jest } from '@jest/globals';
 import { seedWithTransaction, TEST_SCHEMA } from '../../helpers/seed-fixtures.js';
 
 const { default: CustomerRepository } = await import('#repositories/customer.repository.js');
-const { default: CustomerPaymentMethodRepository } = await import('#repositories/customer-payment-method.repository.js');
+const { default: CustomerPaymentMethodRepository } =
+  await import('#repositories/customer-payment-method.repository.js');
 const models = (await import('#models/index.js')).default;
 
 const customer = {
@@ -150,7 +151,9 @@ describe('Customer default-uniqueness DB constraints (integration)', () => {
         spy.mockRestore();
       }
 
-      const rows = await models.CustomerPaymentMethod.schema(TEST_SCHEMA).findAll({ where: { customerId: customer.id } });
+      const rows = await models.CustomerPaymentMethod.schema(TEST_SCHEMA).findAll({
+        where: { customerId: customer.id },
+      });
       const stillOldDefault = rows.find((row) => row.id === pmOld.id);
       const newOne = rows.find((row) => row.id === pmNew.id);
       expect(stillOldDefault.isDefault).toBe(true);

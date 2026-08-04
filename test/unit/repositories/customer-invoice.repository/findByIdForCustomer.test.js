@@ -21,7 +21,8 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     expect(customerInvoiceItemModel.schema).toHaveBeenCalledWith('tenant_x');
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'i1', customerId: 'c1' },
-      include: [{ model: scopedItemModel }],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      include: [{ model: scopedItemModel, as: 'items' }],
     });
     expect(result).toBe(invoice);
   });

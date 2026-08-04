@@ -53,6 +53,27 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
     });
   });
 
+  it('catches up on every overdue period, not just the first, when a run is late', async () => {
+    const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
+    const service = buildService({
+      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' }],
+      invoicesBySourceId: { si1: [latestInvoice] },
+    });
+
+    // Jan 1 anchor, run on Apr 15 -> Feb 1, Mar 1, and Apr 1 are all overdue.
+    const created = await service.processDueRecurrences({ asOf: new Date('2026-04-15') });
+
+    expect(created).toHaveLength(3);
+    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledTimes(3);
+    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith({
+      bookingId: 'b1',
+      customerId: 'c1',
+      sourceInvoiceId: 'si1',
+      status: 'draft',
+      balanceDue: 0,
+    });
+  });
+
   it('does not double-generate a follow-up invoice when run twice for the same period', async () => {
     const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
     const service = buildService({

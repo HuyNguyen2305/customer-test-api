@@ -9,15 +9,20 @@ export default (sequelize, DataTypes) => {
       },
       firstName: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       lastName: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       email: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
+        unique: true,
+      },
+      username: {
+        type: DataTypes.STRING,
+        allowNull: true,
         unique: true,
       },
       // @deprecated superseded by the addresses table (Address model). Kept for now,

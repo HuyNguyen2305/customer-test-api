@@ -16,6 +16,9 @@ module.exports = {
 
   async down({ context: queryInterface }) {
     await queryInterface.removeIndex('addresses', 'addresses_customer_id_default_unique_idx');
-    await queryInterface.removeIndex('customer_payment_methods', 'customer_payment_methods_customer_id_default_unique_idx');
+    await queryInterface.removeIndex(
+      'customer_payment_methods',
+      'customer_payment_methods_customer_id_default_unique_idx',
+    );
   },
 };

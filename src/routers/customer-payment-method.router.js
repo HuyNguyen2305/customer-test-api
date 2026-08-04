@@ -8,9 +8,7 @@ export default async function customerPaymentMethodRouter(fastify, opts) {
     controller.listPaymentMethods(request, reply),
   );
 
-  fastify.post(
-    '/customer/payment-methods/:id/default',
-    { schema: setDefaultPaymentMethodSchema },
-    (request, reply) => controller.setDefault(request, reply),
+  fastify.post('/customer/payment-methods/:id/default', { schema: setDefaultPaymentMethodSchema }, (request, reply) =>
+    controller.setDefault(request, reply),
   );
 }

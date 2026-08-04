@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { requireCustomerId } from '#common/require-customer-id.js';
+import { getContentType } from '#common/storage/content-type.util.js';
 
 class CustomerDocumentController {
   constructor({ customerDocumentService }) {
@@ -21,7 +22,7 @@ class CustomerDocumentController {
     const { file, absolutePath } = await this.customerDocumentService.downloadDocument(request.params.id, customerId);
     return reply
       .header('Content-Disposition', `attachment; filename="${file.originalFileName}"`)
-      .type('application/octet-stream')
+      .type(getContentType(file.originalFileName))
       .send(fs.createReadStream(absolutePath));
   }
 }

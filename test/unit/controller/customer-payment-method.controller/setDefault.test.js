@@ -33,9 +33,9 @@ describe('CustomerPaymentMethodController.setDefault', () => {
     const controller = Object.create(CustomerPaymentMethodController.prototype);
     controller.customerPaymentMethodService = { setDefault: jest.fn() };
 
-    await expect(
-      controller.setDefault({ params: { id: 'pm1' } }, { send: jest.fn() }),
-    ).rejects.toThrow(UnauthorizedError);
+    await expect(controller.setDefault({ params: { id: 'pm1' } }, { send: jest.fn() })).rejects.toThrow(
+      UnauthorizedError,
+    );
     expect(controller.customerPaymentMethodService.setDefault).not.toHaveBeenCalled();
   });
 });

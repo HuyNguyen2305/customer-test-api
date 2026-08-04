@@ -1,4 +1,5 @@
 # Database Architecture Specification
+
 ### Service Templates, Booking, and Customer System
 
 ## Purpose of this document
@@ -263,7 +264,8 @@ bookings
 
 > **⚠️ Open design decision — confirm before implementing this section.**
 > There are two possible approaches:
-> - **(A) Generated-copy model:** `invoices` / `estimates` / `documents` on `services` are templates. When a booking is placed, the system generates a *copy* into customer-scoped tables (`customer_invoices`, `customer_estimates`, `customer_documents`), which are then independently editable per customer.
+>
+> - **(A) Generated-copy model:** `invoices` / `estimates` / `documents` on `services` are templates. When a booking is placed, the system generates a _copy_ into customer-scoped tables (`customer_invoices`, `customer_estimates`, `customer_documents`), which are then independently editable per customer.
 > - **(B) Direct-reference model:** no copying — the existing `invoices` / `estimates` / `documents` tables just gain a `booking_id` (and/or `customer_id`) column directly, and the portal filters those same rows.
 >
 > **(A) is specified below** since it matches the "service = template, booking = instance" pattern established throughout this document, but confirm with stakeholder before building.

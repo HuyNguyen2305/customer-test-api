@@ -31,7 +31,7 @@ const invoiceDetailDataSchema = {
   type: 'object',
   properties: {
     ...invoiceDataSchema.properties,
-    CustomerInvoiceItems: { type: 'array', items: invoiceItemDataSchema },
+    items: { type: 'array', items: invoiceItemDataSchema },
   },
 };
 

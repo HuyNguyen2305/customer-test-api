@@ -2,10 +2,6 @@ import { DataTypes } from 'sequelize';
 import { sequelize } from '#common/sequelize.js';
 
 import defineBalance from './balance.model.js';
-import defineInvoice from './invoice.model.js';
-import defineEstimate from './estimate.model.js';
-import defineDocument from './document.model.js';
-import defineWorkOrder from './work-order.model.js';
 import definePaymentOption from './payment-option.model.js';
 import defineService from './service.model.js';
 import defineServiceRecurrence from './service-recurrence.model.js';
@@ -31,6 +27,7 @@ import defineServiceDocument from './service-document.model.js';
 import defineTodoList from './todo-list.model.js';
 import defineTodo from './todo.model.js';
 import defineCustomer from './customer.model.js';
+import defineRevokedToken from './revoked-token.model.js';
 import defineBooking from './booking.model.js';
 import defineJobMaterial from './job-material.model.js';
 import defineJobTodoList from './job-todo-list.model.js';
@@ -46,10 +43,6 @@ import defineCustomerPaymentMethod from './customer-payment-method.model.js';
 
 for (const define of [
   defineBalance,
-  defineInvoice,
-  defineEstimate,
-  defineDocument,
-  defineWorkOrder,
   definePaymentOption,
   defineService,
   defineServiceRecurrence,
@@ -75,6 +68,7 @@ for (const define of [
   defineTodoList,
   defineTodo,
   defineCustomer,
+  defineRevokedToken,
   defineBooking,
   defineJobMaterial,
   defineJobTodoList,
@@ -205,7 +199,7 @@ CustomerInvoice.belongsTo(Customer, { foreignKey: 'customerId' });
 CustomerInvoice.belongsTo(ServiceInvoice, { foreignKey: 'sourceInvoiceId' });
 Customer.hasMany(CustomerInvoice, { foreignKey: 'customerId' });
 
-CustomerInvoice.hasMany(CustomerInvoiceItem, { foreignKey: 'customerInvoiceId' });
+CustomerInvoice.hasMany(CustomerInvoiceItem, { foreignKey: 'customerInvoiceId', as: 'items' });
 CustomerInvoiceItem.belongsTo(CustomerInvoice, { foreignKey: 'customerInvoiceId' });
 CustomerInvoiceItem.belongsTo(Item, { foreignKey: 'itemId' });
 CustomerInvoiceItem.belongsTo(TaxRate, { foreignKey: 'taxRateId' });
@@ -216,7 +210,7 @@ CustomerEstimate.belongsTo(Customer, { foreignKey: 'customerId' });
 CustomerEstimate.belongsTo(ServiceEstimate, { foreignKey: 'sourceEstimateId' });
 Customer.hasMany(CustomerEstimate, { foreignKey: 'customerId' });
 
-CustomerEstimate.hasMany(CustomerEstimateItem, { foreignKey: 'customerEstimateId' });
+CustomerEstimate.hasMany(CustomerEstimateItem, { foreignKey: 'customerEstimateId', as: 'items' });
 CustomerEstimateItem.belongsTo(CustomerEstimate, { foreignKey: 'customerEstimateId' });
 CustomerEstimateItem.belongsTo(Item, { foreignKey: 'itemId' });
 CustomerEstimateItem.belongsTo(TaxRate, { foreignKey: 'taxRateId' });

@@ -1,3 +1,5 @@
+import { UniqueConstraintError } from 'sequelize';
+
 import { ConflictError, NotFoundError } from '#configs/error.js';
 import { computeNextOccurrences } from './recurrence/recurrence-rule.util.js';
 
@@ -18,13 +20,24 @@ class InvoiceGenerationService {
 
     const serviceInvoice = await this.serviceInvoiceRepository.findByServiceId(booking.serviceId);
 
-    return this.customerInvoiceRepository.createInvoice({
-      bookingId,
-      customerId: booking.customerId,
-      sourceInvoiceId: serviceInvoice ? serviceInvoice.id : null,
-      status: 'draft',
-      balanceDue: 0,
-    });
+    try {
+      return await this.customerInvoiceRepository.createInvoice({
+        bookingId,
+        customerId: booking.customerId,
+        sourceInvoiceId: serviceInvoice ? serviceInvoice.id : null,
+        status: 'draft',
+        balanceDue: 0,
+        isInitial: true,
+      });
+    } catch (error) {
+      // The findByBookingId check above has a race window under concurrent calls
+      // for the same booking; the partial unique index on (bookingId) WHERE
+      // isInitial = true is the actual source of truth.
+      if (error instanceof UniqueConstraintError) {
+        throw new ConflictError('Invoice already exists for this booking');
+      }
+      throw error;
+    }
   }
 
   async processDueRecurrences({ asOf = new Date() } = {}) {
@@ -62,21 +75,25 @@ class InvoiceGenerationService {
         continue;
       }
 
-      const [nextDue] = computeNextOccurrences(frequency, {
+      const dueDates = computeNextOccurrences(frequency, {
         anchorDate: latestInvoice.createdAt,
         windowStart: latestInvoice.createdAt,
         windowEnd: asOf,
       });
-      if (!nextDue) continue;
 
-      const invoice = await this.customerInvoiceRepository.createInvoice({
-        bookingId: latestInvoice.bookingId,
-        customerId: latestInvoice.customerId,
-        sourceInvoiceId: frequency.serviceInvoiceId,
-        status: 'draft',
-        balanceDue: 0,
-      });
-      createdInvoices.push(invoice);
+      // Generate one invoice per overdue occurrence, not just the first, so a
+      // generation run that missed its schedule (e.g. a monthly job that didn't
+      // run for three months) catches up instead of silently losing periods.
+      for (let i = 0; i < dueDates.length; i += 1) {
+        const invoice = await this.customerInvoiceRepository.createInvoice({
+          bookingId: latestInvoice.bookingId,
+          customerId: latestInvoice.customerId,
+          sourceInvoiceId: frequency.serviceInvoiceId,
+          status: 'draft',
+          balanceDue: 0,
+        });
+        createdInvoices.push(invoice);
+      }
     }
 
     return createdInvoices;

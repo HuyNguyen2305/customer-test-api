@@ -19,6 +19,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
       limit: 20,
       offset: 0,
       order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
     });
     expect(result).toEqual({ rows: [{ id: 'i1' }], count: 1 });
   });

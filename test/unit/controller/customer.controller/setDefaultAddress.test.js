@@ -33,9 +33,9 @@ describe('CustomerController.setDefaultAddress', () => {
     const controller = Object.create(CustomerController.prototype);
     controller.customerService = { setDefaultAddress: jest.fn() };
 
-    await expect(
-      controller.setDefaultAddress({ params: { id: 'a1' } }, { send: jest.fn() }),
-    ).rejects.toThrow(UnauthorizedError);
+    await expect(controller.setDefaultAddress({ params: { id: 'a1' } }, { send: jest.fn() })).rejects.toThrow(
+      UnauthorizedError,
+    );
     expect(controller.customerService.setDefaultAddress).not.toHaveBeenCalled();
   });
 });

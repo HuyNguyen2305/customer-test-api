@@ -33,7 +33,7 @@ const estimateDetailDataSchema = {
   type: 'object',
   properties: {
     ...estimateDataSchema.properties,
-    CustomerEstimateItems: { type: 'array', items: estimateItemDataSchema },
+    items: { type: 'array', items: estimateItemDataSchema },
   },
 };
 

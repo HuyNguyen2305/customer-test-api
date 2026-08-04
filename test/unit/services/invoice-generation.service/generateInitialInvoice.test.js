@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 
 const { default: InvoiceGenerationService } = await import('#service/invoice-generation.service.js');
 const { ConflictError, NotFoundError } = await import('#configs/error.js');
+const { UniqueConstraintError } = await import('sequelize');
 
 function buildService({ booking, existingInvoice, serviceInvoice, created } = {}) {
   const service = Object.create(InvoiceGenerationService.prototype);
@@ -43,6 +44,7 @@ describe('InvoiceGenerationService.generateInitialInvoice', () => {
       sourceInvoiceId: 'si1',
       status: 'draft',
       balanceDue: 0,
+      isInitial: true,
     });
     expect(result).toBe(created);
   });
@@ -54,7 +56,24 @@ describe('InvoiceGenerationService.generateInitialInvoice', () => {
     await service.generateInitialInvoice('b1');
 
     expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceInvoiceId: null }),
+      expect.objectContaining({ sourceInvoiceId: null, isInitial: true }),
     );
+  });
+
+  it('throws ConflictError (not a raw DB error) when createInvoice races past the findByBookingId check', async () => {
+    const booking = { id: 'b1', customerId: 'c1', serviceId: 's1' };
+    const service = buildService({ booking, existingInvoice: null, serviceInvoice: null });
+    service.customerInvoiceRepository.createInvoice = jest.fn().mockRejectedValue(new UniqueConstraintError({}));
+
+    await expect(service.generateInitialInvoice('b1')).rejects.toThrow(ConflictError);
+  });
+
+  it('re-throws unrelated errors from createInvoice unchanged', async () => {
+    const booking = { id: 'b1', customerId: 'c1', serviceId: 's1' };
+    const dbError = new Error('connection lost');
+    const service = buildService({ booking, existingInvoice: null, serviceInvoice: null });
+    service.customerInvoiceRepository.createInvoice = jest.fn().mockRejectedValue(dbError);
+
+    await expect(service.generateInitialInvoice('b1')).rejects.toBe(dbError);
   });
 });

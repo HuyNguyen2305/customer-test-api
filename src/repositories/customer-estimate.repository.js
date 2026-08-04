@@ -7,13 +7,20 @@ class CustomerEstimateRepository extends BaseRepository {
   }
 
   listByCustomerId(customerId, { limit, offset } = {}) {
-    return this.findAndCountAll({ where: { customerId }, limit, offset, order: [['createdAt', 'DESC']] });
+    return this.findAndCountAll({
+      where: { customerId },
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+    });
   }
 
   findByIdForCustomer(id, customerId) {
     return this.findOne({
       where: { id, customerId },
-      include: [{ model: this.scopeModel(this.customerEstimateItemModel) }],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      include: [{ model: this.scopeModel(this.customerEstimateItemModel), as: 'items' }],
     });
   }
 }

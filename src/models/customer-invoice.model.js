@@ -47,6 +47,14 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      // True only for the single invoice created by generateInitialInvoice for a
+      // booking; recurring follow-up invoices leave this false so they can share
+      // the same bookingId (see the partial unique index on this + bookingId).
+      isInitial: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
       tableName: 'customer_invoices',

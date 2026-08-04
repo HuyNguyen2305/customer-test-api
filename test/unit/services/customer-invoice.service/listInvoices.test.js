@@ -2,18 +2,45 @@ import { jest } from '@jest/globals';
 
 const { default: CustomerInvoiceService } = await import('#service/customer-invoice.service.js');
 
+const invoiceRow = {
+  id: 'i1',
+  bookingId: 'b1',
+  customerId: 'c1',
+  sourceInvoiceId: null,
+  discountValue: 10,
+  discountType: 'percent',
+  termsText: 'Net 30',
+  notesText: null,
+  status: 'sent',
+  balanceDue: 100,
+};
+
 describe('CustomerInvoiceService.listInvoices', () => {
-  it('paginates using default page/pageSize and shapes the result', async () => {
-    const rows = [{ id: 'i1' }, { id: 'i2' }];
+  it('paginates using default page/pageSize and maps rows to the invoice DTO', async () => {
     const service = Object.create(CustomerInvoiceService.prototype);
-    service.customerInvoiceRepository = { listByCustomerId: jest.fn().mockResolvedValue({ rows, count: 2 }) };
+    service.customerInvoiceRepository = {
+      listByCustomerId: jest.fn().mockResolvedValue({ rows: [invoiceRow], count: 1 }),
+    };
 
     const result = await service.listInvoices('c1');
 
     expect(service.customerInvoiceRepository.listByCustomerId).toHaveBeenCalledWith('c1', { limit: 20, offset: 0 });
     expect(result).toEqual({
-      invoices: rows,
-      pagination: { page: 1, pageSize: 20, total: 2, totalPages: 1 },
+      invoices: [
+        {
+          id: 'i1',
+          bookingId: 'b1',
+          customerId: 'c1',
+          sourceInvoiceId: null,
+          discountValue: 10,
+          discountType: 'percent',
+          termsText: 'Net 30',
+          notesText: null,
+          status: 'sent',
+          balanceDue: 100,
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
   });
 

@@ -21,7 +21,8 @@ describe('CustomerEstimateRepository.findByIdForCustomer', () => {
     expect(customerEstimateItemModel.schema).toHaveBeenCalledWith('tenant_x');
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'e1', customerId: 'c1' },
-      include: [{ model: scopedItemModel }],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      include: [{ model: scopedItemModel, as: 'items' }],
     });
     expect(result).toBe(estimate);
   });
