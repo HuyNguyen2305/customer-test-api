@@ -19,6 +19,16 @@ class CustomerDocumentRepository extends BaseRepository {
       ],
     });
   }
+
+  findByIdForCustomer(id, customerId) {
+    return this.findOne({
+      where: { id, customerId },
+      include: [
+        { model: this.scopeModel(this.serviceDocumentLibraryModel) },
+        { model: this.scopeModel(this.pdfModel) },
+      ],
+    });
+  }
 }
 
 export default CustomerDocumentRepository;

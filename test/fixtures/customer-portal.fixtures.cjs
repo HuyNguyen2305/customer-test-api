@@ -75,6 +75,25 @@ const bookingB = {
   status: 'completed',
 };
 
+const bookingA2 = {
+  id: '77777777-8888-9999-aaaa-bbbbbbbbbbbb',
+  serviceId: service1.id,
+  customerId: customerA.id,
+  addressId: addressA.id,
+  startTime: new Date('2026-01-03T10:00:00Z'),
+  endTime: new Date('2026-01-03T11:00:00Z'),
+  status: 'completed',
+};
+
+const bookingA3Pending = {
+  id: '77777777-8888-9999-aaaa-cccccccccccc',
+  serviceId: service1.id,
+  customerId: customerA.id,
+  startTime: new Date('2026-01-04T10:00:00Z'),
+  endTime: new Date('2026-01-04T11:00:00Z'),
+  status: 'pending',
+};
+
 const invoiceA = {
   id: '11111111-2222-3333-4444-666666666666',
   bookingId: bookingA.id,
@@ -178,11 +197,17 @@ const ledgerPaymentA2 = {
 const serviceDocLibraryA = {
   id: '44444444-5555-6666-7777-888888888888',
   name: 'Service Agreement',
+  filePath: 'service-agreement.pdf',
+  originalFileName: 'Service Agreement.pdf',
+  fileSize: 1024,
 };
 
 const pdfA = {
   id: '44444444-5555-6666-7777-999999999999',
   name: 'Inspection Report.pdf',
+  filePath: 'inspection-report.pdf',
+  originalFileName: 'Inspection Report.pdf',
+  fileSize: 2048,
 };
 
 const customerDocumentA = {
@@ -212,6 +237,8 @@ module.exports = {
   item1,
   bookingA,
   bookingB,
+  bookingA2,
+  bookingA3Pending,
   invoiceA,
   invoiceB,
   invoiceItemA,

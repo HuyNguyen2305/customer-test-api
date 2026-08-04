@@ -1,3 +1,6 @@
+import { NotFoundError } from '#configs/error.js';
+import { getAbsolutePath, fileExists } from '#common/storage/local-storage.js';
+
 class CustomerDocumentService {
   constructor({ customerDocumentRepository }) {
     this.customerDocumentRepository = customerDocumentRepository;
@@ -20,6 +23,17 @@ class CustomerDocumentService {
       documents,
       pagination: { page, pageSize, total: count, totalPages: Math.ceil(count / pageSize) },
     };
+  }
+
+  async downloadDocument(id, customerId) {
+    const customerDocument = await this.customerDocumentRepository.findByIdForCustomer(id, customerId);
+    if (!customerDocument) throw new NotFoundError('Document not found');
+
+    const file = customerDocument.type === 'doc' ? customerDocument.ServiceDocumentLibrary : customerDocument.Pdf;
+    if (!file) throw new NotFoundError('Document not found');
+    if (!(await fileExists(file.filePath))) throw new NotFoundError('Document file not found');
+
+    return { file, absolutePath: getAbsolutePath(file.filePath) };
   }
 }
 

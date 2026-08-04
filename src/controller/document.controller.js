@@ -26,7 +26,7 @@ class DocumentController {
   async downloadDocument(request, reply) {
     const customerId = requireCustomerId();
     const { document, absolutePath } = await this.documentService.downloadDocument(request.params.id, customerId);
-    reply
+    return reply
       .header('Content-Disposition', `attachment; filename="${document.originalFileName}"`)
       .type(document.type || 'application/octet-stream')
       .send(fs.createReadStream(absolutePath));

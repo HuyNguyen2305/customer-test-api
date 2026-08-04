@@ -12,10 +12,10 @@ jest.unstable_mockModule('node:fs', () => ({
   createReadStream: createReadStreamMock,
 }));
 
-const { default: DocumentController } = await import('#controller/document.controller.js');
+const { default: CustomerDocumentController } = await import('#controller/customer-document.controller.js');
 const { UnauthorizedError } = await import('#configs/error.js');
 
-describe('DocumentController.downloadDocument', () => {
+describe('CustomerDocumentController.downloadDocument', () => {
   beforeEach(() => {
     requireCustomerIdMock.mockReset();
     createReadStreamMock.mockReset();
@@ -23,12 +23,12 @@ describe('DocumentController.downloadDocument', () => {
 
   it('streams the file with the correct headers', async () => {
     requireCustomerIdMock.mockReturnValue('c1');
-    const document = { originalFileName: 'contract.pdf', type: 'application/pdf' };
+    const file = { originalFileName: 'contract.pdf' };
     const stream = { pipe: jest.fn() };
     createReadStreamMock.mockReturnValue(stream);
-    const controller = Object.create(DocumentController.prototype);
-    controller.documentService = {
-      downloadDocument: jest.fn().mockResolvedValue({ document, absolutePath: '/uploads/contract.pdf' }),
+    const controller = Object.create(CustomerDocumentController.prototype);
+    controller.customerDocumentService = {
+      downloadDocument: jest.fn().mockResolvedValue({ file, absolutePath: '/uploads/contract.pdf' }),
     };
     const sendResult = Symbol('sendResult');
     const reply = {
@@ -36,14 +36,14 @@ describe('DocumentController.downloadDocument', () => {
       type: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnValue(sendResult),
     };
-    const request = { params: { id: 'd1' } };
+    const request = { params: { id: 'cd1' } };
 
     const result = await controller.downloadDocument(request, reply);
 
-    expect(controller.documentService.downloadDocument).toHaveBeenCalledWith('d1', 'c1');
+    expect(controller.customerDocumentService.downloadDocument).toHaveBeenCalledWith('cd1', 'c1');
     expect(createReadStreamMock).toHaveBeenCalledWith('/uploads/contract.pdf');
     expect(reply.header).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="contract.pdf"');
-    expect(reply.type).toHaveBeenCalledWith('application/pdf');
+    expect(reply.type).toHaveBeenCalledWith('application/octet-stream');
     expect(reply.send).toHaveBeenCalledWith(stream);
     // Fastify silently drops streamed payloads from an async handler unless the
     // reply.send(...) chain is returned, so this return is load-bearing, not stylistic.
@@ -54,12 +54,12 @@ describe('DocumentController.downloadDocument', () => {
     requireCustomerIdMock.mockImplementation(() => {
       throw new UnauthorizedError('Authentication required');
     });
-    const controller = Object.create(DocumentController.prototype);
-    controller.documentService = { downloadDocument: jest.fn() };
+    const controller = Object.create(CustomerDocumentController.prototype);
+    controller.customerDocumentService = { downloadDocument: jest.fn() };
 
     await expect(
-      controller.downloadDocument({ params: { id: 'd1' } }, { header: jest.fn(), type: jest.fn(), send: jest.fn() }),
+      controller.downloadDocument({ params: { id: 'cd1' } }, { header: jest.fn(), type: jest.fn(), send: jest.fn() }),
     ).rejects.toThrow(UnauthorizedError);
-    expect(controller.documentService.downloadDocument).not.toHaveBeenCalled();
+    expect(controller.customerDocumentService.downloadDocument).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,18 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      filePath: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      originalFileName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      fileSize: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
     },
     {
       tableName: 'service_document_library',

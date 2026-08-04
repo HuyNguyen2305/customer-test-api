@@ -64,7 +64,6 @@ function* iterateCandidates(rule, anchorDate) {
     const weeklyDays = rule.weeklyDays && rule.weeklyDays.length ? rule.weeklyDays : [WEEKDAYS[anchorDate.getDay()]];
     let weekCursor = addDays(anchorDate, -anchorDate.getDay());
     while (true) {
-      weekCursor = addDays(weekCursor, 7 * interval);
       const dayCandidates = weeklyDays
         .map((dayName) => addDays(weekCursor, WEEKDAYS.indexOf(dayName)))
         .filter((date) => date > anchorDate)
@@ -78,6 +77,7 @@ function* iterateCandidates(rule, anchorDate) {
         }
         yield candidate;
       }
+      weekCursor = addDays(weekCursor, 7 * interval);
     }
   }
 

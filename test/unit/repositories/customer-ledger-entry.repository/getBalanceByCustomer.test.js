@@ -4,7 +4,7 @@ const { default: CustomerLedgerEntryRepository } = await import('#repositories/c
 const { requestContext } = await import('#common/request-context.js');
 
 describe('CustomerLedgerEntryRepository.getBalanceByCustomer', () => {
-  it('runs a single aggregate query scoped to customerId, restricted to charge/payment types', async () => {
+  it('runs a single aggregate query scoped to customerId, covering all four ledger entry types', async () => {
     const scopedModel = { findOne: jest.fn().mockResolvedValue({ balance: '180' }) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerLedgerEntryRepository.prototype);
@@ -17,7 +17,12 @@ describe('CustomerLedgerEntryRepository.getBalanceByCustomer', () => {
     expect(scopedModel.findOne).toHaveBeenCalledTimes(1);
     const callArgs = scopedModel.findOne.mock.calls[0][0];
     expect(callArgs.where.customerId).toBe('c1');
-    expect(callArgs.where.type[Object.getOwnPropertySymbols(callArgs.where.type)[0]]).toEqual(['charge', 'payment']);
+    expect(callArgs.where.type[Object.getOwnPropertySymbols(callArgs.where.type)[0]]).toEqual([
+      'charge',
+      'payment',
+      'adjustment',
+      'refund',
+    ]);
     expect(result).toBe(180);
   });
 

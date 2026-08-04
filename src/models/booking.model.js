@@ -32,6 +32,12 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 'pending',
       },
+      workOrderNumber: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        allowNull: false,
+        unique: true,
+      },
     },
     {
       tableName: 'bookings',

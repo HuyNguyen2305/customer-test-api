@@ -1,5 +1,11 @@
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import { seedWithTransaction, TEST_SCHEMA } from '../../helpers/seed-fixtures.js';
 import fixtures from '../../fixtures/customer-portal.fixtures.cjs';
+
+const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'customer-portal-router-download-'));
+process.env.UPLOAD_DIR = uploadDir;
 
 const { buildApp } = await import('../../../src/app.js');
 
@@ -14,6 +20,8 @@ const {
   item1,
   bookingA,
   bookingB,
+  bookingA2,
+  bookingA3Pending,
   invoiceA,
   invoiceB,
   invoiceItemA,
@@ -38,7 +46,7 @@ const allFixtures = {
   Address: [addressA],
   Service: [service1],
   Item: [item1],
-  Booking: [bookingA, bookingB],
+  Booking: [bookingA, bookingB, bookingA2, bookingA3Pending],
   CustomerInvoice: [invoiceA, invoiceB],
   CustomerInvoiceItem: [invoiceItemA],
   CustomerEstimate: [estimateA, estimateB],
@@ -55,6 +63,8 @@ function headersFor(customerId) {
 }
 
 describe('Customer portal GET endpoints (integration)', () => {
+  afterAll(() => fs.rm(uploadDir, { recursive: true, force: true }));
+
   it('GET /customer/profile returns the authenticated customer with addresses', async () => {
     await seedWithTransaction(allFixtures, async () => {
       const app = await buildApp();
@@ -329,6 +339,44 @@ describe('Customer portal GET endpoints (integration)', () => {
     });
   });
 
+  it('GET /customer/balance reflects adjustment and refund entries, not just charge/payment', async () => {
+    const fixturesWithAdjustmentAndRefund = {
+      ...allFixtures,
+      CustomerLedgerEntry: [
+        ...allFixtures.CustomerLedgerEntry,
+        {
+          id: '33333333-5555-6666-7777-888888888888',
+          customerId: customerA.id,
+          type: 'adjustment',
+          amount: 15,
+        },
+        {
+          id: '33333333-5555-6666-7777-999999999999',
+          customerId: customerA.id,
+          type: 'refund',
+          amount: 5,
+        },
+      ],
+    };
+
+    await seedWithTransaction(fixturesWithAdjustmentAndRefund, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/balance',
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      // base 80 (see test above) + adjustment 15 - refund 5 = 90
+      expect(response.json().data.balance).toBe(90);
+
+      await app.close();
+    });
+  });
+
   it('GET /customer/balance rejects an unauthenticated request', async () => {
     await seedWithTransaction(allFixtures, async () => {
       const app = await buildApp();
@@ -516,6 +564,80 @@ describe('Customer portal GET endpoints (integration)', () => {
     });
   });
 
+  it('GET /customer/documents/:id/download streams the file for the owner', async () => {
+    await fs.writeFile(path.join(uploadDir, serviceDocLibraryA.filePath), 'agreement contents');
+
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/documents/${customerDocumentA.id}/download`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-disposition']).toBe(
+        `attachment; filename="${serviceDocLibraryA.originalFileName}"`,
+      );
+      expect(response.body).toBe('agreement contents');
+
+      await app.close();
+    });
+  });
+
+  it("GET /customer/documents/:id/download returns 404 when requesting another customer's document", async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/documents/${customerDocumentB.id}/download`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/documents/:id/download returns 404 when the file is missing from disk', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/documents/${customerDocumentB.id}/download`,
+        headers: headersFor(customerB.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/documents/:id/download rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/documents/${customerDocumentA.id}/download`,
+        headers: headersFor(),
+      });
+
+      expect(response.statusCode).toBe(401);
+
+      await app.close();
+    });
+  });
+
   it('GET /customer/documents returns an empty list, not an error, for a customer with no documents', async () => {
     const fixturesWithoutDocs = { ...allFixtures, CustomerDocument: [customerDocumentB] };
     await seedWithTransaction(fixturesWithoutDocs, async () => {
@@ -530,6 +652,157 @@ describe('Customer portal GET endpoints (integration)', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json().data).toEqual([]);
+
+      await app.close();
+    });
+  });
+
+  it("GET /customer/work-orders lists only the authenticated customer's completed bookings", async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/work-orders',
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      const ids = body.data.map((wo) => wo.id);
+      expect(ids).toEqual(expect.arrayContaining([bookingA.id, bookingA2.id]));
+      expect(ids).not.toContain(bookingA3Pending.id);
+      expect(ids).not.toContain(bookingB.id);
+      expect(body.data.find((wo) => wo.id === bookingA.id)).toMatchObject({
+        serviceName: service1.name,
+        status: 'completed',
+      });
+      expect(typeof body.data.find((wo) => wo.id === bookingA.id).workOrderNumber).toBe('number');
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders filters by addressId', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/work-orders?addressId=${addressA.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].id).toBe(bookingA2.id);
+      expect(body.data[0].address).toMatchObject({ id: addressA.id, label: addressA.label });
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders returns an empty list, not an error, for a customer with no completed bookings', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/work-orders',
+        headers: headersFor(customerC.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data).toEqual([]);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({ method: 'GET', url: '/customer/work-orders', headers: headersFor() });
+
+      expect(response.statusCode).toBe(401);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders/:id returns the completed booking for the owner', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/work-orders/${bookingA.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.id).toBe(bookingA.id);
+      expect(body.data.serviceName).toBe(service1.name);
+      expect(body.data.status).toBe('completed');
+
+      await app.close();
+    });
+  });
+
+  it("GET /customer/work-orders/:id returns 404 (not 403) when requesting another customer's booking", async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/work-orders/${bookingB.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders/:id returns 404 for a booking that is not completed', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/work-orders/${bookingA3Pending.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/work-orders/:id rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/work-orders/${bookingA.id}`,
+        headers: headersFor(),
+      });
+
+      expect(response.statusCode).toBe(401);
 
       await app.close();
     });

@@ -34,6 +34,38 @@ describe('computeNextOccurrences', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
+  it('includes a same-week later weekday, not just the following week', () => {
+    // Monday 2026-01-05, rule fires Monday and Wednesday every week.
+    const anchorDate = new Date('2026-01-05T10:00:00Z');
+    const windowEnd = new Date('2026-01-20T00:00:00Z');
+
+    const result = computeNextOccurrences(
+      { repeatType: 'weekly', interval: 1, weeklyDays: ['monday', 'wednesday'] },
+      { anchorDate, windowStart: anchorDate, windowEnd },
+    );
+
+    const dates = result.map((d) => d.toISOString().slice(0, 10));
+
+    // The same week's Wednesday (2026-01-07) must not be skipped.
+    expect(dates).toContain('2026-01-07');
+    expect(dates).toEqual(['2026-01-07', '2026-01-12', '2026-01-14', '2026-01-19']);
+  });
+
+  it('still advances by the full interval for subsequent weeks when interval > 1', () => {
+    // Monday 2026-01-05, rule fires every 2 weeks on Monday.
+    const anchorDate = new Date('2026-01-05T10:00:00Z');
+    const windowEnd = new Date('2026-02-10T00:00:00Z');
+
+    const result = computeNextOccurrences(
+      { repeatType: 'weekly', interval: 2, weeklyDays: ['monday'] },
+      { anchorDate, windowStart: anchorDate, windowEnd },
+    );
+
+    const dates = result.map((d) => d.toISOString().slice(0, 10));
+
+    expect(dates).toEqual(['2026-01-19', '2026-02-02']);
+  });
+
   it('generates monthly occurrences on the same day of month', () => {
     const result = computeNextOccurrences(
       { repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' },

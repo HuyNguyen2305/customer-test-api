@@ -9,6 +9,16 @@ const documentDataSchema = {
   },
 };
 
+export const downloadDocumentSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string' },
+    },
+  },
+};
+
 export const listDocumentsSchema = {
   querystring: {
     type: 'object',

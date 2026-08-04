@@ -15,11 +15,16 @@ class CustomerLedgerEntryRepository extends BaseRepository {
     const result = await this.setSchema().findOne({
       attributes: [
         [
-          fn('SUM', literal(`CASE WHEN "type" = 'charge' THEN "amount" WHEN "type" = 'payment' THEN -"amount" ELSE 0 END`)),
+          fn(
+            'SUM',
+            literal(
+              `CASE WHEN "type" IN ('charge', 'adjustment') THEN "amount" WHEN "type" IN ('payment', 'refund') THEN -"amount" ELSE 0 END`,
+            ),
+          ),
           'balance',
         ],
       ],
-      where: { customerId, type: { [Op.in]: ['charge', 'payment'] } },
+      where: { customerId, type: { [Op.in]: ['charge', 'payment', 'adjustment', 'refund'] } },
       raw: true,
     });
     return Number(result?.balance) || 0;
