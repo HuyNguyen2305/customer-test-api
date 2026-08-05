@@ -7,7 +7,6 @@ import { REPOSITORY_KEYS, SERVICE_KEYS, CONTROLLER_KEYS } from '#constants/singl
 import AuthRepository from '#repositories/auth.repository.js';
 import BalanceRepository from '#repositories/balance.repository.js';
 import WorkOrderRepository from '#repositories/work-order.repository.js';
-import PaymentOptionRepository from '#repositories/payment-option.repository.js';
 import BookingRepository from '#repositories/booking.repository.js';
 import ServiceRepository from '#repositories/service.repository.js';
 import ServiceRecurrenceRepository from '#repositories/service-recurrence.repository.js';
@@ -28,7 +27,6 @@ import CustomerDocumentRepository from '#repositories/customer-document.reposito
 import AuthService from '#service/auth.service.js';
 import BalanceService from '#service/balance.service.js';
 import WorkOrderService from '#service/work-order.service.js';
-import PaymentOptionService from '#service/payment-option.service.js';
 import RecurringBookingGeneratorService from '#service/recurring-booking-generator.service.js';
 import JobSnapshotService from '#service/job-snapshot.service.js';
 import JobSyncService from '#service/job-sync.service.js';
@@ -46,7 +44,6 @@ import CustomerDocumentService from '#service/customer-document.service.js';
 import AuthController from '#controller/auth.controller.js';
 import BalanceController from '#controller/balance.controller.js';
 import WorkOrderController from '#controller/work-order.controller.js';
-import PaymentOptionController from '#controller/payment-option.controller.js';
 import CustomerController from '#controller/customer.controller.js';
 import CustomerPaymentMethodController from '#controller/customer-payment-method.controller.js';
 import CustomerInvoiceController from '#controller/customer-invoice.controller.js';
@@ -58,7 +55,6 @@ const container = createContainer({ injectionMode: InjectionMode.PROXY });
 
 container.register({
   balanceModel: asValue(models.Balance),
-  paymentOptionModel: asValue(models.PaymentOption),
   bookingModel: asValue(models.Booking),
   serviceModel: asValue(models.Service),
   serviceRecurrenceModel: asValue(models.ServiceRecurrence),
@@ -86,7 +82,6 @@ container.register({
   [REPOSITORY_KEYS.AUTH_REPOSITORY]: asClass(AuthRepository).scoped(),
   [REPOSITORY_KEYS.BALANCE_REPOSITORY]: asClass(BalanceRepository).scoped(),
   [REPOSITORY_KEYS.WORK_ORDER_REPOSITORY]: asClass(WorkOrderRepository).scoped(),
-  [REPOSITORY_KEYS.PAYMENT_OPTION_REPOSITORY]: asClass(PaymentOptionRepository).scoped(),
   [REPOSITORY_KEYS.BOOKING_REPOSITORY]: asClass(BookingRepository).scoped(),
   [REPOSITORY_KEYS.SERVICE_REPOSITORY]: asClass(ServiceRepository).scoped(),
   [REPOSITORY_KEYS.SERVICE_RECURRENCE_REPOSITORY]: asClass(ServiceRecurrenceRepository).scoped(),
@@ -107,7 +102,6 @@ container.register({
   [SERVICE_KEYS.AUTH_SERVICE]: asClass(AuthService).scoped(),
   [SERVICE_KEYS.BALANCE_SERVICE]: asClass(BalanceService).scoped(),
   [SERVICE_KEYS.WORK_ORDER_SERVICE]: asClass(WorkOrderService).scoped(),
-  [SERVICE_KEYS.PAYMENT_OPTION_SERVICE]: asClass(PaymentOptionService).scoped(),
   [SERVICE_KEYS.RECURRING_BOOKING_GENERATOR_SERVICE]: asClass(RecurringBookingGeneratorService).scoped(),
   [SERVICE_KEYS.JOB_SNAPSHOT_SERVICE]: asClass(JobSnapshotService).scoped(),
   [SERVICE_KEYS.JOB_SYNC_SERVICE]: asClass(JobSyncService).scoped(),
@@ -125,7 +119,6 @@ container.register({
   [CONTROLLER_KEYS.AUTH_CONTROLLER]: asClass(AuthController).scoped(),
   [CONTROLLER_KEYS.BALANCE_CONTROLLER]: asClass(BalanceController).scoped(),
   [CONTROLLER_KEYS.WORK_ORDER_CONTROLLER]: asClass(WorkOrderController).scoped(),
-  [CONTROLLER_KEYS.PAYMENT_OPTION_CONTROLLER]: asClass(PaymentOptionController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_CONTROLLER]: asClass(CustomerController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_PAYMENT_METHOD_CONTROLLER]: asClass(CustomerPaymentMethodController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_INVOICE_CONTROLLER]: asClass(CustomerInvoiceController).scoped(),

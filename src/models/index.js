@@ -2,7 +2,6 @@ import { DataTypes } from 'sequelize';
 import { sequelize } from '#common/sequelize.js';
 
 import defineBalance from './balance.model.js';
-import definePaymentOption from './payment-option.model.js';
 import defineService from './service.model.js';
 import defineServiceRecurrence from './service-recurrence.model.js';
 import defineItem from './item.model.js';
@@ -43,7 +42,6 @@ import defineCustomerPaymentMethod from './customer-payment-method.model.js';
 
 for (const define of [
   defineBalance,
-  definePaymentOption,
   defineService,
   defineServiceRecurrence,
   defineItem,

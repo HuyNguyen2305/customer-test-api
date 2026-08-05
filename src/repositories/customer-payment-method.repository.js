@@ -11,6 +11,44 @@ class CustomerPaymentMethodRepository extends BaseRepository {
     return this.findAll({ where: { customerId } });
   }
 
+  addPaymentMethod(data) {
+    return this.create(data);
+  }
+
+  getPaymentMethodById(id, customerId) {
+    return this.findOne({ where: { id, customerId } });
+  }
+
+  decrementCredit(id, amount) {
+    return sequelize.transaction(async (transaction) => {
+      const scoped = this.setSchema();
+      const paymentMethod = await scoped.findByPk(id, { transaction });
+      if (!paymentMethod) return null;
+
+      const newBalance = Number(paymentMethod.creditBalance) - amount;
+      await scoped.update({ creditBalance: newBalance }, { where: { id }, transaction });
+      return scoped.findByPk(id, { transaction });
+    });
+  }
+
+  upsertOpenCredit(customerId, amount) {
+    return sequelize.transaction(async (transaction) => {
+      const scoped = this.setSchema();
+      const existing = await scoped.findOne({ where: { customerId, type: 'open_credit' }, transaction });
+
+      if (existing) {
+        const newBalance = Number(existing.creditBalance) + amount;
+        await scoped.update({ creditBalance: newBalance }, { where: { id: existing.id }, transaction });
+        return scoped.findByPk(existing.id, { transaction });
+      }
+
+      return scoped.create(
+        { customerId, type: 'open_credit', creditBalance: amount, isDefault: false },
+        { transaction },
+      );
+    });
+  }
+
   setDefault(id, customerId) {
     return sequelize.transaction(async (transaction) => {
       const scoped = this.setSchema();

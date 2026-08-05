@@ -2,7 +2,7 @@
 // Tables are created in a dedicated `test_tenant` schema by syncing the real
 // Sequelize models (the Umzug migrations only target the default schema).
 //
-// Repository methods (e.g. BalanceRepository.getBalance/payOff) don't accept
+// Repository methods (e.g. BalanceRepository.getBalance/setAmount) don't accept
 // a `transaction` option, so seeded rows inserted inside an open transaction
 // would be invisible to a repository call running on a different pooled
 // connection. Instead, each test commits its fixtures and the helper
@@ -45,8 +45,8 @@ async function ensureSchema() {
 export async function seedWithTransaction(fixtures, testFn) {
   await ensureSchema();
 
+  const seeded = {};
   try {
-    const seeded = {};
     for (const [modelName, rows] of Object.entries(fixtures)) {
       seeded[modelName] = [];
       for (const row of rows) {
@@ -56,10 +56,14 @@ export async function seedWithTransaction(fixtures, testFn) {
 
     await requestContext.run(new Map([['identity', { schema: TEST_SCHEMA }]]), () => testFn({ seeded }));
   } finally {
-    // Also runs when seeding itself fails partway through, so a failed test
-    // never leaves rows behind to collide with the next run's fixture ids.
-    for (const modelName of Object.keys(fixtures)) {
-      await models[modelName].schema(TEST_SCHEMA).destroy({ where: {}, truncate: true, cascade: true });
+    // Delete only the rows this call created (by id), in reverse creation
+    // order so FK-referenced rows survive until their dependents are gone.
+    // A table-wide truncate here would race with other Jest worker
+    // processes seeding/reading the same shared `test_tenant` schema.
+    for (const modelName of Object.keys(fixtures).reverse()) {
+      for (const instance of seeded[modelName] ?? []) {
+        await models[modelName].schema(TEST_SCHEMA).destroy({ where: { id: instance.id } });
+      }
     }
   }
 }

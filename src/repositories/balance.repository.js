@@ -9,8 +9,8 @@ class BalanceRepository extends BaseRepository {
     return this.findOne({ where: { customerId } });
   }
 
-  payOff(customerId) {
-    return this.update({ amount: 0 }, { where: { customerId } });
+  setAmount(customerId, amount) {
+    return this.update({ amount }, { where: { customerId } });
   }
 }
 

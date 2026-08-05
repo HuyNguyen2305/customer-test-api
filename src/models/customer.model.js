@@ -44,6 +44,16 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      squareCustomerId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      stripeCustomerId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
     },
     {
       tableName: 'customers',

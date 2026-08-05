@@ -16,6 +16,11 @@ class CustomerRepository extends BaseRepository {
     return this.findByPk(id, { include: [{ model: this.scopeModel(this.addressModel) }] });
   }
 
+  setGatewayCustomerId(id, gateway, gatewayCustomerId) {
+    const column = gateway === 'square' ? 'squareCustomerId' : 'stripeCustomerId';
+    return this.update({ [column]: gatewayCustomerId }, { where: { id } });
+  }
+
   setDefaultAddress(id, customerId) {
     return sequelize.transaction(async (transaction) => {
       const scoped = this.scopeModel(this.addressModel);

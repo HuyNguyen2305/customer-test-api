@@ -22,9 +22,9 @@ export const getBalanceSchema = {
 export const payBalanceSchema = {
   body: {
     type: 'object',
-    required: ['paymentOptionId'],
+    required: ['paymentMethodId'],
     properties: {
-      paymentOptionId: { type: 'string' },
+      paymentMethodId: { type: 'string' },
     },
   },
   response: {

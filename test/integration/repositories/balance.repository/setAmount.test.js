@@ -4,13 +4,13 @@ import balanceFixtures from '../../../fixtures/balance.fixtures.cjs';
 const { default: BalanceRepository } = await import('#repositories/balance.repository.js');
 const models = (await import('#models/index.js')).default;
 
-describe('BalanceRepository.payOff (integration)', () => {
-  it('zeroes the amount for the customer in the database', async () => {
+describe('BalanceRepository.setAmount (integration)', () => {
+  it('sets the amount for the customer in the database', async () => {
     await seedWithTransaction({ Balance: [balanceFixtures.balanceWithAmount] }, async () => {
       const repository = Object.create(BalanceRepository.prototype);
       repository.model = models.Balance;
 
-      await repository.payOff(balanceFixtures.balanceWithAmount.customerId);
+      await repository.setAmount(balanceFixtures.balanceWithAmount.customerId, 0);
       const result = await repository.getBalance(balanceFixtures.balanceWithAmount.customerId);
 
       expect(Number(result.amount)).toBe(0);

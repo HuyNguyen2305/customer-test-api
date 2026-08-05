@@ -2,9 +2,10 @@ import { getPaymentGateway } from '#common/factory/payment-gateway/payment-gatew
 import { NotFoundError, BadRequestError } from '#configs/error.js';
 
 class BalanceService {
-  constructor({ balanceRepository, paymentOptionRepository }) {
+  constructor({ balanceRepository, customerPaymentMethodRepository, ledgerService }) {
     this.balanceRepository = balanceRepository;
-    this.paymentOptionRepository = paymentOptionRepository;
+    this.customerPaymentMethodRepository = customerPaymentMethodRepository;
+    this.ledgerService = ledgerService;
   }
 
   async getBalance(customerId) {
@@ -13,22 +14,31 @@ class BalanceService {
     return balance;
   }
 
-  async payBalance(customerId, paymentOptionId) {
+  async payBalance(customerId, paymentMethodId) {
     const balance = await this.getBalance(customerId);
     const amount = Number(balance.amount);
     if (amount <= 0) throw new BadRequestError('Nothing to pay');
 
-    const paymentOption = await this.paymentOptionRepository.getPaymentOptionById(paymentOptionId, customerId);
-    if (!paymentOption) throw new NotFoundError('Payment option not found');
+    const paymentMethod = await this.customerPaymentMethodRepository.getPaymentMethodById(paymentMethodId, customerId);
+    if (!paymentMethod) throw new NotFoundError('Payment method not found');
 
-    const gateway = getPaymentGateway(paymentOption.gateway);
-    await gateway.charge({
-      amount,
-      currency: balance.currency,
-      externalId: paymentOption.externalId,
-    });
+    if (paymentMethod.type === 'open_credit') {
+      if (Number(paymentMethod.creditBalance) < amount) throw new BadRequestError('Insufficient open credit');
+      await this.customerPaymentMethodRepository.decrementCredit(paymentMethod.id, amount);
+    } else {
+      const gateway = getPaymentGateway(paymentMethod.gateway);
+      await gateway.charge({
+        amount,
+        currency: balance.currency,
+        sourceId: paymentMethod.token,
+        customerId: paymentMethod.gatewayCustomerId,
+      });
+    }
 
-    await this.balanceRepository.payOff(customerId);
+    await this.ledgerService.recordPayment({ customerId, invoiceId: null, amount });
+    const newBalance = await this.ledgerService.getCustomerBalance(customerId);
+    await this.balanceRepository.setAmount(customerId, newBalance);
+
     return this.getBalance(customerId);
   }
 }

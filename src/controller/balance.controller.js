@@ -13,8 +13,8 @@ class BalanceController {
 
   async payBalance(request, reply) {
     const { customerId } = requestContext.get('identity') ?? {};
-    const { paymentOptionId } = request.body;
-    const data = await this.balanceService.payBalance(customerId, paymentOptionId);
+    const { paymentMethodId } = request.body;
+    const data = await this.balanceService.payBalance(customerId, paymentMethodId);
     reply.send({ success: true, message: 'Balance paid', data });
   }
 }

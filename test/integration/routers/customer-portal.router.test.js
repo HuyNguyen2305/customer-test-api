@@ -137,7 +137,16 @@ describe('Customer portal GET endpoints (integration)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = response.json();
-      expect(body.data).toEqual([{ id: paymentMethodA.id, type: 'card', token: 'tok_visa_4242', isDefault: true }]);
+      expect(body.data).toEqual([
+        {
+          id: paymentMethodA.id,
+          type: 'card',
+          token: 'tok_visa_4242',
+          gateway: null,
+          creditBalance: null,
+          isDefault: true,
+        },
+      ]);
 
       await app.close();
     });
