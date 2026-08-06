@@ -28,6 +28,15 @@ export class SquareGateway {
     return response.card.id;
   }
 
+  async createBankAccountOnFile({ sourceId, customerId }) {
+    const response = await this.client.bankAccounts.createBankAccount({
+      idempotencyKey: randomUUID(),
+      sourceId,
+      customerId,
+    });
+    return response.bankAccount.id;
+  }
+
   async charge({ amount, currency, sourceId, customerId, locationId }) {
     return this.client.payments.create({
       sourceId,

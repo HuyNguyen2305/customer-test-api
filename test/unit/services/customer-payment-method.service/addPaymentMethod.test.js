@@ -2,9 +2,11 @@ import { jest } from '@jest/globals';
 
 const createCustomerMock = jest.fn();
 const createCardOnFileMock = jest.fn();
+const createBankAccountOnFileMock = jest.fn();
 const getPaymentGatewayMock = jest.fn(() => ({
   createCustomer: createCustomerMock,
   createCardOnFile: createCardOnFileMock,
+  createBankAccountOnFile: createBankAccountOnFileMock,
 }));
 
 jest.unstable_mockModule('#common/factory/payment-gateway/payment-gateway.factory.js', () => ({
@@ -31,6 +33,7 @@ describe('CustomerPaymentMethodService.addPaymentMethod', () => {
     getPaymentGatewayMock.mockClear();
     createCustomerMock.mockReset().mockResolvedValue('sq_cust_new');
     createCardOnFileMock.mockReset().mockResolvedValue('sq_card_new');
+    createBankAccountOnFileMock.mockReset().mockResolvedValue('sq_bank_new');
   });
 
   it('creates a gateway customer and persists it when the customer has none yet', async () => {
@@ -106,5 +109,18 @@ describe('CustomerPaymentMethodService.addPaymentMethod', () => {
 
     expect(getPaymentGatewayMock).toHaveBeenCalledWith('stripe');
     expect(createCustomerMock).toHaveBeenCalledWith({ firstName: 'A', lastName: 'B', email: 'a@example.com' });
+  });
+
+  it('creates a bank account on file instead of a card when type is bank', async () => {
+    const customer = { id: 'c1', squareCustomerId: 'sq_cust_existing' };
+    const service = buildService({ customer });
+
+    await service.addPaymentMethod('c1', { gateway: 'square', type: 'bank', nonce: 'bnon_1' });
+
+    expect(createBankAccountOnFileMock).toHaveBeenCalledWith({ sourceId: 'bnon_1', customerId: 'sq_cust_existing' });
+    expect(createCardOnFileMock).not.toHaveBeenCalled();
+    expect(service.customerPaymentMethodRepository.addPaymentMethod).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'bank', token: 'sq_bank_new' }),
+    );
   });
 });

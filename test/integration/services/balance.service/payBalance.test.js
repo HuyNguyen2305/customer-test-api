@@ -66,6 +66,7 @@ describe('BalanceService.payBalance (integration)', () => {
           currency: balanceFixtures.balanceWithAmount.currency,
           sourceId: customerPaymentMethodFixtures.squareCard.token,
           customerId: customerPaymentMethodFixtures.squareCard.gatewayCustomerId,
+          type: customerPaymentMethodFixtures.squareCard.type,
         });
         expect(Number(result.amount)).toBe(0);
 

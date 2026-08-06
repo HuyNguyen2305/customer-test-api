@@ -19,9 +19,10 @@ class CustomerPaymentMethodController {
 
   async addPaymentMethod(request, reply) {
     const customerId = requireCustomerId();
-    const { gateway, nonce, cardholderName } = request.body;
+    const { gateway, type, nonce, cardholderName } = request.body;
     const data = await this.customerPaymentMethodService.addPaymentMethod(customerId, {
       gateway,
+      type,
       nonce,
       cardholderName,
     });

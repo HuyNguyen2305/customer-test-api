@@ -32,6 +32,7 @@ class BalanceService {
         currency: balance.currency,
         sourceId: paymentMethod.token,
         customerId: paymentMethod.gatewayCustomerId,
+        type: paymentMethod.type,
       });
     }
 

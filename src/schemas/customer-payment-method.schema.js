@@ -29,6 +29,7 @@ export const createPaymentMethodSchema = {
     required: ['gateway', 'nonce'],
     properties: {
       gateway: { type: 'string', enum: ['square', 'stripe'] },
+      type: { type: 'string', enum: ['card', 'bank'] },
       nonce: { type: 'string' },
       cardholderName: { type: 'string' },
     },

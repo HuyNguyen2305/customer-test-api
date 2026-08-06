@@ -55,6 +55,7 @@ describe('BalanceService.payBalance', () => {
       currency: 'USD',
       sourceId: 'sq_card_1',
       customerId: 'sq_cust_1',
+      type: 'card',
     });
     expect(service.ledgerService.recordPayment).toHaveBeenCalledWith({
       customerId: 'c1',
@@ -84,6 +85,29 @@ describe('BalanceService.payBalance', () => {
       currency: 'USD',
       sourceId: 'pm_stripe_1',
       customerId: 'cus_stripe_1',
+      type: 'card',
+    });
+  });
+
+  it('charges a bank account payment method and passes type through to the gateway', async () => {
+    const balance = { customerId: 'c1', amount: 75, currency: 'USD' };
+    const paymentMethod = {
+      id: 'pm4',
+      type: 'bank',
+      gateway: 'stripe',
+      token: 'pm_bank_1',
+      gatewayCustomerId: 'cus_stripe_1',
+    };
+    const service = buildService({ balance, paymentMethod });
+
+    await service.payBalance('c1', 'pm4');
+
+    expect(chargeMock).toHaveBeenCalledWith({
+      amount: 75,
+      currency: 'USD',
+      sourceId: 'pm_bank_1',
+      customerId: 'cus_stripe_1',
+      type: 'bank',
     });
   });
 

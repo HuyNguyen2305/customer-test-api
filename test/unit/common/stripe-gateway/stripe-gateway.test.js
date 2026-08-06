@@ -41,6 +41,15 @@ describe('StripeGateway', () => {
     expect(id).toBe('pm_1');
   });
 
+  it('createBankAccountOnFile attaches an existing PaymentMethod id to the customer', async () => {
+    const gateway = new StripeGateway();
+
+    const id = await gateway.createBankAccountOnFile({ sourceId: 'pm_bank_1', customerId: 'cus_1' });
+
+    expect(paymentMethodsAttachMock).toHaveBeenCalledWith('pm_bank_1', { customer: 'cus_1' });
+    expect(id).toBe('pm_1');
+  });
+
   it('charge sends amount in the smallest currency unit with the saved payment method and customer', async () => {
     const gateway = new StripeGateway();
 
@@ -51,8 +60,19 @@ describe('StripeGateway', () => {
       currency: 'usd',
       customer: 'cus_1',
       payment_method: 'pm_1',
+      payment_method_types: ['card'],
       confirm: true,
       off_session: true,
     });
+  });
+
+  it('charge uses us_bank_account payment_method_types when type is bank', async () => {
+    const gateway = new StripeGateway();
+
+    await gateway.charge({ amount: 12.5, currency: 'usd', sourceId: 'pm_bank_1', customerId: 'cus_1', type: 'bank' });
+
+    expect(paymentIntentsCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_method_types: ['us_bank_account'] }),
+    );
   });
 });

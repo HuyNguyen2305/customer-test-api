@@ -17,7 +17,7 @@ class CustomerPaymentMethodService {
     return paymentMethod;
   }
 
-  async addPaymentMethod(customerId, { gateway, nonce, cardholderName }) {
+  async addPaymentMethod(customerId, { gateway, type = 'card', nonce, cardholderName }) {
     const customer = await this.customerRepository.findById(customerId);
     const gatewayClient = getPaymentGateway(gateway);
 
@@ -31,18 +31,17 @@ class CustomerPaymentMethodService {
       await this.customerRepository.setGatewayCustomerId(customerId, gateway, gatewayCustomerId);
     }
 
-    const cardId = await gatewayClient.createCardOnFile({
-      sourceId: nonce,
-      customerId: gatewayCustomerId,
-      cardholderName,
-    });
+    const onFileId =
+      type === 'bank'
+        ? await gatewayClient.createBankAccountOnFile({ sourceId: nonce, customerId: gatewayCustomerId })
+        : await gatewayClient.createCardOnFile({ sourceId: nonce, customerId: gatewayCustomerId, cardholderName });
 
     const existing = await this.customerPaymentMethodRepository.listByCustomerId(customerId);
     return this.customerPaymentMethodRepository.addPaymentMethod({
       customerId,
-      type: 'card',
+      type,
       gateway,
-      token: cardId,
+      token: onFileId,
       gatewayCustomerId,
       isDefault: existing.length === 0,
     });
