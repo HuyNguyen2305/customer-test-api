@@ -5,9 +5,20 @@ const invoiceItemDataSchema = {
     itemId: { type: 'string' },
     description: { type: ['string', 'null'] },
     cost: { type: 'number' },
-    taxRateId: { type: ['string', 'null'] },
     qty: { type: 'integer' },
     sortOrder: { type: 'integer' },
+  },
+};
+
+const invoiceTaxDataSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    code: { type: ['string', 'null'] },
+    rate: { type: 'number' },
+    type: { type: ['string', 'null'] },
+    amount: { type: 'number' },
   },
 };
 
@@ -22,8 +33,22 @@ const invoiceDataSchema = {
     discountType: { type: 'string', enum: ['percent', 'flat'] },
     termsText: { type: ['string', 'null'] },
     notesText: { type: ['string', 'null'] },
-    status: { type: 'string', enum: ['draft', 'sent', 'paid', 'overdue'] },
+    status: { type: 'string', enum: ['draft', 'sent', 'void', 'write_off', 'paid'] },
     balanceDue: { type: 'number' },
+    addressId: { type: ['string', 'null'] },
+    addressLabel: { type: ['string', 'null'] },
+    addressLine1: { type: ['string', 'null'] },
+    addressLine2: { type: ['string', 'null'] },
+    addressCity: { type: ['string', 'null'] },
+    addressState: { type: ['string', 'null'] },
+    addressZip: { type: ['string', 'null'] },
+    addressCountry: { type: ['string', 'null'] },
+    subtotal: { type: 'number' },
+    discountAmount: { type: 'number' },
+    taxableAmount: { type: 'number' },
+    taxes: { type: 'array', items: invoiceTaxDataSchema },
+    taxTotal: { type: 'number' },
+    total: { type: 'number' },
   },
 };
 
@@ -41,6 +66,9 @@ export const listInvoicesSchema = {
     properties: {
       page: { type: 'integer', minimum: 1, default: 1 },
       pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+      addressId: { type: 'string' },
+      status: { type: 'string', enum: ['draft', 'sent', 'void', 'write_off', 'paid'] },
+      statusOrder: { type: 'string', enum: ['asc', 'desc'] },
     },
   },
   response: {

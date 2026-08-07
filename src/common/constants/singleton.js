@@ -18,6 +18,11 @@ export const REPOSITORY_KEYS = {
   CUSTOMER_ESTIMATE_REPOSITORY: 'customerEstimateRepository',
   CUSTOMER_PAYMENT_METHOD_REPOSITORY: 'customerPaymentMethodRepository',
   CUSTOMER_DOCUMENT_REPOSITORY: 'customerDocumentRepository',
+  ADDRESS_REPOSITORY: 'addressRepository',
+  TAX_RATE_REPOSITORY: 'taxRateRepository',
+  INVOICE_ITEM_REPOSITORY: 'invoiceItemRepository',
+  CUSTOMER_INVOICE_ITEM_REPOSITORY: 'customerInvoiceItemRepository',
+  CUSTOMER_INVOICE_TAX_REPOSITORY: 'customerInvoiceTaxRepository',
 };
 
 export const SERVICE_KEYS = {
@@ -37,6 +42,8 @@ export const SERVICE_KEYS = {
   CUSTOMER_ESTIMATE_SERVICE: 'customerEstimateService',
   CUSTOMER_PAYMENT_METHOD_SERVICE: 'customerPaymentMethodService',
   CUSTOMER_DOCUMENT_SERVICE: 'customerDocumentService',
+  ADDRESS_SERVICE: 'addressService',
+  CUSTOMER_INVOICE_ITEM_SERVICE: 'customerInvoiceItemService',
 };
 
 export const CONTROLLER_KEYS = {
@@ -49,4 +56,6 @@ export const CONTROLLER_KEYS = {
   CUSTOMER_ESTIMATE_CONTROLLER: 'customerEstimateController',
   CUSTOMER_LEDGER_CONTROLLER: 'customerLedgerController',
   CUSTOMER_DOCUMENT_CONTROLLER: 'customerDocumentController',
+  ADDRESS_CONTROLLER: 'addressController',
+  CUSTOMER_INVOICE_ITEM_CONTROLLER: 'customerInvoiceItemController',
 };

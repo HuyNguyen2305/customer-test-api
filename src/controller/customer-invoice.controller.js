@@ -7,8 +7,14 @@ class CustomerInvoiceController {
 
   async listInvoices(request, reply) {
     const customerId = requireCustomerId();
-    const { page, pageSize } = request.query;
-    const { invoices, pagination } = await this.customerInvoiceService.listInvoices(customerId, { page, pageSize });
+    const { page, pageSize, addressId, status, statusOrder } = request.query;
+    const { invoices, pagination } = await this.customerInvoiceService.listInvoices(customerId, {
+      page,
+      pageSize,
+      addressId,
+      status,
+      statusOrder,
+    });
     reply.send({ success: true, message: 'Invoices retrieved', data: invoices, pagination });
   }
 

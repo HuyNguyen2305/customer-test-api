@@ -23,6 +23,11 @@ import CustomerRepository from '#repositories/customer.repository.js';
 import CustomerEstimateRepository from '#repositories/customer-estimate.repository.js';
 import CustomerPaymentMethodRepository from '#repositories/customer-payment-method.repository.js';
 import CustomerDocumentRepository from '#repositories/customer-document.repository.js';
+import AddressRepository from '#repositories/address.repository.js';
+import TaxRateRepository from '#repositories/tax-rate.repository.js';
+import InvoiceItemRepository from '#repositories/invoice-item.repository.js';
+import CustomerInvoiceItemRepository from '#repositories/customer-invoice-item.repository.js';
+import CustomerInvoiceTaxRepository from '#repositories/customer-invoice-tax.repository.js';
 
 import AuthService from '#service/auth.service.js';
 import BalanceService from '#service/balance.service.js';
@@ -40,6 +45,8 @@ import CustomerInvoiceService from '#service/customer-invoice.service.js';
 import CustomerEstimateService from '#service/customer-estimate.service.js';
 import CustomerPaymentMethodService from '#service/customer-payment-method.service.js';
 import CustomerDocumentService from '#service/customer-document.service.js';
+import AddressService from '#service/address.service.js';
+import CustomerInvoiceItemService from '#service/customer-invoice-item.service.js';
 
 import AuthController from '#controller/auth.controller.js';
 import BalanceController from '#controller/balance.controller.js';
@@ -50,6 +57,8 @@ import CustomerInvoiceController from '#controller/customer-invoice.controller.j
 import CustomerEstimateController from '#controller/customer-estimate.controller.js';
 import CustomerLedgerController from '#controller/customer-ledger.controller.js';
 import CustomerDocumentController from '#controller/customer-document.controller.js';
+import AddressController from '#controller/address.controller.js';
+import CustomerInvoiceItemController from '#controller/customer-invoice-item.controller.js';
 
 const container = createContainer({ injectionMode: InjectionMode.PROXY });
 
@@ -78,6 +87,9 @@ container.register({
   customerDocumentModel: asValue(models.CustomerDocument),
   serviceDocumentLibraryModel: asValue(models.ServiceDocumentLibrary),
   pdfModel: asValue(models.Pdf),
+  taxRateModel: asValue(models.TaxRate),
+  invoiceItemModel: asValue(models.InvoiceItem),
+  customerInvoiceTaxModel: asValue(models.CustomerInvoiceTax),
 
   [REPOSITORY_KEYS.AUTH_REPOSITORY]: asClass(AuthRepository).scoped(),
   [REPOSITORY_KEYS.BALANCE_REPOSITORY]: asClass(BalanceRepository).scoped(),
@@ -98,6 +110,11 @@ container.register({
   [REPOSITORY_KEYS.CUSTOMER_ESTIMATE_REPOSITORY]: asClass(CustomerEstimateRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_PAYMENT_METHOD_REPOSITORY]: asClass(CustomerPaymentMethodRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_DOCUMENT_REPOSITORY]: asClass(CustomerDocumentRepository).scoped(),
+  [REPOSITORY_KEYS.ADDRESS_REPOSITORY]: asClass(AddressRepository).scoped(),
+  [REPOSITORY_KEYS.TAX_RATE_REPOSITORY]: asClass(TaxRateRepository).scoped(),
+  [REPOSITORY_KEYS.INVOICE_ITEM_REPOSITORY]: asClass(InvoiceItemRepository).scoped(),
+  [REPOSITORY_KEYS.CUSTOMER_INVOICE_ITEM_REPOSITORY]: asClass(CustomerInvoiceItemRepository).scoped(),
+  [REPOSITORY_KEYS.CUSTOMER_INVOICE_TAX_REPOSITORY]: asClass(CustomerInvoiceTaxRepository).scoped(),
 
   [SERVICE_KEYS.AUTH_SERVICE]: asClass(AuthService).scoped(),
   [SERVICE_KEYS.BALANCE_SERVICE]: asClass(BalanceService).scoped(),
@@ -115,6 +132,8 @@ container.register({
   [SERVICE_KEYS.CUSTOMER_ESTIMATE_SERVICE]: asClass(CustomerEstimateService).scoped(),
   [SERVICE_KEYS.CUSTOMER_PAYMENT_METHOD_SERVICE]: asClass(CustomerPaymentMethodService).scoped(),
   [SERVICE_KEYS.CUSTOMER_DOCUMENT_SERVICE]: asClass(CustomerDocumentService).scoped(),
+  [SERVICE_KEYS.ADDRESS_SERVICE]: asClass(AddressService).scoped(),
+  [SERVICE_KEYS.CUSTOMER_INVOICE_ITEM_SERVICE]: asClass(CustomerInvoiceItemService).scoped(),
 
   [CONTROLLER_KEYS.AUTH_CONTROLLER]: asClass(AuthController).scoped(),
   [CONTROLLER_KEYS.BALANCE_CONTROLLER]: asClass(BalanceController).scoped(),
@@ -125,6 +144,8 @@ container.register({
   [CONTROLLER_KEYS.CUSTOMER_ESTIMATE_CONTROLLER]: asClass(CustomerEstimateController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_LEDGER_CONTROLLER]: asClass(CustomerLedgerController).scoped(),
   [CONTROLLER_KEYS.CUSTOMER_DOCUMENT_CONTROLLER]: asClass(CustomerDocumentController).scoped(),
+  [CONTROLLER_KEYS.ADDRESS_CONTROLLER]: asClass(AddressController).scoped(),
+  [CONTROLLER_KEYS.CUSTOMER_INVOICE_ITEM_CONTROLLER]: asClass(CustomerInvoiceItemController).scoped(),
 });
 
 export default container;

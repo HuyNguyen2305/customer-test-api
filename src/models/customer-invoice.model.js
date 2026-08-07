@@ -19,6 +19,38 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
+      addressId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      addressLabel: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressLine1: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressLine2: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressCity: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressState: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressZip: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      addressCountry: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       discountValue: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
@@ -38,7 +70,7 @@ export default (sequelize, DataTypes) => {
         allowNull: true,
       },
       status: {
-        type: DataTypes.ENUM('draft', 'sent', 'paid', 'overdue'),
+        type: DataTypes.ENUM('draft', 'sent', 'void', 'write_off', 'paid'),
         allowNull: false,
         defaultValue: 'draft',
       },

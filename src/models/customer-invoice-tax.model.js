@@ -1,11 +1,19 @@
 export default (sequelize, DataTypes) => {
   sequelize.define(
-    'TaxRate',
+    'CustomerInvoiceTax',
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
+      },
+      customerInvoiceId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      taxRateId: {
+        type: DataTypes.UUID,
+        allowNull: true,
       },
       name: {
         type: DataTypes.STRING,
@@ -24,25 +32,9 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      country: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      state: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      effectiveFrom: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-      },
-      effectiveTo: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-      },
     },
     {
-      tableName: 'tax_rates',
+      tableName: 'customer_invoice_taxes',
     },
   );
 };

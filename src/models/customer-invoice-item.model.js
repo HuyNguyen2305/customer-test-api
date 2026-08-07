@@ -24,10 +24,6 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
-      taxRateId: {
-        type: DataTypes.UUID,
-        allowNull: true,
-      },
       qty: {
         type: DataTypes.INTEGER,
         allowNull: false,
