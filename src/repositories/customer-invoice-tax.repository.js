@@ -9,8 +9,8 @@ class CustomerInvoiceTaxRepository extends BaseRepository {
     return this.findAll({ where: { customerInvoiceId } });
   }
 
-  createTax(data) {
-    return this.create(data);
+  createTax(data, options) {
+    return this.create(data, options);
   }
 }
 

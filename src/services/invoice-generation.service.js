@@ -1,5 +1,6 @@
 import { UniqueConstraintError } from 'sequelize';
 
+import { sequelize } from '#common/sequelize.js';
 import { ConflictError, NotFoundError } from '#configs/error.js';
 import { computeNextOccurrences } from './recurrence/recurrence-rule.util.js';
 
@@ -49,7 +50,7 @@ class InvoiceGenerationService {
 
   // Copies the template's InvoiceItem rows onto the newly created invoice — a
   // generated invoice otherwise has no line items at all.
-  async copyLineItems(invoice, sourceInvoiceId) {
+  async copyLineItems(invoice, sourceInvoiceId, options = {}) {
     if (!sourceInvoiceId) return;
 
     const templateItems = await this.invoiceItemRepository.listByServiceInvoiceId(sourceInvoiceId);
@@ -64,26 +65,43 @@ class InvoiceGenerationService {
         qty: item.qty,
         sortOrder: item.sortOrder,
       })),
+      options,
     );
   }
 
   // Matches the invoice's snapshotted state to a seeded TaxRate and freezes a
   // CustomerInvoiceTax row from it — same rationale as the address snapshot: a
   // later edit to the master TaxRate must not retroactively change this invoice.
-  async attachAutoTax(invoice, addressSnapshot) {
+  async attachAutoTax(invoice, addressSnapshot, options = {}) {
     const state = addressSnapshot?.addressState;
     if (!state) return;
 
     const taxRate = await this.taxRateRepository.findByState(state);
     if (!taxRate) return;
 
-    await this.customerInvoiceTaxRepository.createTax({
-      customerInvoiceId: invoice.id,
-      taxRateId: taxRate.id,
-      name: taxRate.name,
-      code: taxRate.code,
-      rate: taxRate.rate,
-      type: taxRate.type,
+    await this.customerInvoiceTaxRepository.createTax(
+      {
+        customerInvoiceId: invoice.id,
+        taxRateId: taxRate.id,
+        name: taxRate.name,
+        code: taxRate.code,
+        rate: taxRate.rate,
+        type: taxRate.type,
+      },
+      options,
+    );
+  }
+
+  // Creates the invoice plus its line items and auto-tax as one atomic unit —
+  // without this, a failure partway through (e.g. copyLineItems throwing)
+  // would leave a committed invoice with no items/tax, and the idempotency
+  // check on bookingId would then block ever regenerating it correctly.
+  async createInvoiceWithItemsAndTax(invoiceData, sourceInvoiceId, addressSnapshot) {
+    return sequelize.transaction(async (transaction) => {
+      const invoice = await this.customerInvoiceRepository.createInvoice(invoiceData, { transaction });
+      await this.copyLineItems(invoice, sourceInvoiceId, { transaction });
+      await this.attachAutoTax(invoice, addressSnapshot, { transaction });
+      return invoice;
     });
   }
 
@@ -99,18 +117,19 @@ class InvoiceGenerationService {
 
     try {
       const sourceInvoiceId = serviceInvoice ? serviceInvoice.id : null;
-      const invoice = await this.customerInvoiceRepository.createInvoice({
-        bookingId,
-        customerId: booking.customerId,
+      return await this.createInvoiceWithItemsAndTax(
+        {
+          bookingId,
+          customerId: booking.customerId,
+          sourceInvoiceId,
+          status: 'draft',
+          balanceDue: 0,
+          isInitial: true,
+          ...addressSnapshot,
+        },
         sourceInvoiceId,
-        status: 'draft',
-        balanceDue: 0,
-        isInitial: true,
-        ...addressSnapshot,
-      });
-      await this.copyLineItems(invoice, sourceInvoiceId);
-      await this.attachAutoTax(invoice, addressSnapshot);
-      return invoice;
+        addressSnapshot,
+      );
     } catch (error) {
       // The findByBookingId check above has a race window under concurrent calls
       // for the same booking; the partial unique index on (bookingId) WHERE
@@ -146,16 +165,18 @@ class InvoiceGenerationService {
           if (alreadyInvoiced) continue;
 
           const addressSnapshot = await this.buildAddressSnapshot(booking);
-          const invoice = await this.customerInvoiceRepository.createInvoice({
-            bookingId: booking.id,
-            customerId: booking.customerId,
-            sourceInvoiceId: frequency.serviceInvoiceId,
-            status: 'draft',
-            balanceDue: 0,
-            ...addressSnapshot,
-          });
-          await this.copyLineItems(invoice, frequency.serviceInvoiceId);
-          await this.attachAutoTax(invoice, addressSnapshot);
+          const invoice = await this.createInvoiceWithItemsAndTax(
+            {
+              bookingId: booking.id,
+              customerId: booking.customerId,
+              sourceInvoiceId: frequency.serviceInvoiceId,
+              status: 'draft',
+              balanceDue: 0,
+              ...addressSnapshot,
+            },
+            frequency.serviceInvoiceId,
+            addressSnapshot,
+          );
           createdInvoices.push(invoice);
         }
         continue;
@@ -176,16 +197,18 @@ class InvoiceGenerationService {
       // generation run that missed its schedule (e.g. a monthly job that didn't
       // run for three months) catches up instead of silently losing periods.
       for (let i = 0; i < dueDates.length; i += 1) {
-        const invoice = await this.customerInvoiceRepository.createInvoice({
-          bookingId: latestInvoice.bookingId,
-          customerId: latestInvoice.customerId,
-          sourceInvoiceId: frequency.serviceInvoiceId,
-          status: 'draft',
-          balanceDue: 0,
-          ...addressSnapshot,
-        });
-        await this.copyLineItems(invoice, frequency.serviceInvoiceId);
-        await this.attachAutoTax(invoice, addressSnapshot);
+        const invoice = await this.createInvoiceWithItemsAndTax(
+          {
+            bookingId: latestInvoice.bookingId,
+            customerId: latestInvoice.customerId,
+            sourceInvoiceId: frequency.serviceInvoiceId,
+            status: 'draft',
+            balanceDue: 0,
+            ...addressSnapshot,
+          },
+          frequency.serviceInvoiceId,
+          addressSnapshot,
+        );
         createdInvoices.push(invoice);
       }
     }

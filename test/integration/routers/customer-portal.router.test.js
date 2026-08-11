@@ -26,9 +26,12 @@ const {
   bookingA3Pending,
   invoiceA,
   invoiceB,
+  invoiceA2,
   invoiceItemA,
   estimateA,
   estimateB,
+  estimateDraftA,
+  estimateApprovedA2,
   estimateItemA,
   paymentMethodA,
   paymentMethodA2,
@@ -45,13 +48,13 @@ const {
 
 const allFixtures = {
   Customer: [customerA, customerB, customerC],
-  Address: [addressA],
+  Address: [addressA, addressA2],
   Service: [service1],
   Item: [item1],
   Booking: [bookingA, bookingB, bookingA2, bookingA3Pending],
-  CustomerInvoice: [invoiceA, invoiceB],
+  CustomerInvoice: [invoiceA, invoiceB, invoiceA2],
   CustomerInvoiceItem: [invoiceItemA],
-  CustomerEstimate: [estimateA, estimateB],
+  CustomerEstimate: [estimateA, estimateB, estimateDraftA, estimateApprovedA2],
   CustomerEstimateItem: [estimateItemA],
   CustomerPaymentMethod: [paymentMethodA],
   CustomerLedgerEntry: [ledgerChargeA, ledgerPaymentA, ledgerChargeA2, ledgerPaymentA2],
@@ -87,7 +90,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.email).toBe(customerA.email);
-      expect(body.data.Addresses).toHaveLength(1);
+      expect(body.data.Addresses).toHaveLength(2);
 
       await app.close();
     });
@@ -183,8 +186,103 @@ describe('Customer portal GET endpoints (integration)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = response.json();
+      expect(body.data.map((invoice) => invoice.id).sort()).toEqual([invoiceA.id, invoiceA2.id].sort());
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/invoices?status=... filters to only invoices with that status', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/invoices?status=draft',
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
       expect(body.data).toHaveLength(1);
-      expect(body.data[0].id).toBe(invoiceA.id);
+      expect(body.data[0].id).toBe(invoiceA2.id);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/invoices?addressId=... filters to only invoices for that address', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/invoices?addressId=${addressA2.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].id).toBe(invoiceA2.id);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/invoices combines status and addressId with AND, returning nothing on a mismatched combo', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/invoices?status=sent&addressId=${addressA2.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().data).toEqual([]);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/invoices?statusOrder=asc orders by the frozen status sequence, draft before sent', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/invoices?statusOrder=asc',
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.map((invoice) => invoice.id)).toEqual([invoiceA2.id, invoiceA.id]);
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/invoices?statusOrder=desc reverses the status sequence, sent before draft', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/customer/invoices?statusOrder=desc',
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.map((invoice) => invoice.id)).toEqual([invoiceA.id, invoiceA2.id]);
 
       await app.close();
     });
@@ -293,13 +391,31 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.id).toBe(estimateA.id);
+      expect(body.data.statusLabel).toBe('Open');
       expect(body.data.items).toHaveLength(1);
 
       await app.close();
     });
   });
 
-  it("GET /customer/estimates lists only the authenticated customer's estimates", async () => {
+  it('GET /customer/estimates/:id returns 404 for a draft estimate (not portal-visible)', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/estimates/${estimateDraftA.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it("GET /customer/estimates lists only the authenticated customer's portal-visible estimates", async () => {
     await seedWithTransaction(allFixtures, async () => {
       const app = await buildApp();
       await app.ready();
@@ -312,8 +428,30 @@ describe('Customer portal GET endpoints (integration)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = response.json();
-      expect(body.data).toHaveLength(1);
-      expect(body.data[0].id).toBe(estimateA.id);
+      const ids = body.data.map((estimate) => estimate.id);
+      expect(ids).toContain(estimateA.id);
+      expect(ids).toContain(estimateApprovedA2.id);
+      expect(ids).not.toContain(estimateDraftA.id);
+      expect(body.data.find((estimate) => estimate.id === estimateApprovedA2.id).statusLabel).toBe('Accepted');
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/estimates?addressId= filters estimates to the given address via the booking', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/customer/estimates?addressId=${addressA.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.map((estimate) => estimate.id)).toEqual([estimateApprovedA2.id]);
 
       await app.close();
     });

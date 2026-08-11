@@ -26,11 +26,44 @@ describe('CustomerEstimateService.listEstimates', () => {
 
     const result = await service.listEstimates('c1');
 
-    expect(service.customerEstimateRepository.listByCustomerId).toHaveBeenCalledWith('c1', { limit: 20, offset: 0 });
+    expect(service.customerEstimateRepository.listByCustomerId).toHaveBeenCalledWith('c1', {
+      limit: 20,
+      offset: 0,
+      addressId: undefined,
+      statuses: ['sent', 'approved'],
+    });
     expect(result).toEqual({
-      estimates: [estimateRow],
+      estimates: [{ ...estimateRow, statusLabel: 'Open' }],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
+  });
+
+  it('forwards addressId to the repository when provided', async () => {
+    const service = Object.create(CustomerEstimateService.prototype);
+    service.customerEstimateRepository = {
+      listByCustomerId: jest.fn().mockResolvedValue({ rows: [], count: 0 }),
+    };
+
+    await service.listEstimates('c1', { addressId: 'addr1' });
+
+    expect(service.customerEstimateRepository.listByCustomerId).toHaveBeenCalledWith('c1', {
+      limit: 20,
+      offset: 0,
+      addressId: 'addr1',
+      statuses: ['sent', 'approved'],
+    });
+  });
+
+  it('maps an approved estimate to the "Accepted" status label', async () => {
+    const approvedRow = { ...estimateRow, status: 'approved' };
+    const service = Object.create(CustomerEstimateService.prototype);
+    service.customerEstimateRepository = {
+      listByCustomerId: jest.fn().mockResolvedValue({ rows: [approvedRow], count: 1 }),
+    };
+
+    const result = await service.listEstimates('c1');
+
+    expect(result.estimates[0].statusLabel).toBe('Accepted');
   });
 
   it('returns an empty list without error when the customer has no estimates', async () => {

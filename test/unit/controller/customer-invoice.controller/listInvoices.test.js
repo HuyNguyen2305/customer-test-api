@@ -30,4 +30,23 @@ describe('CustomerInvoiceController.listInvoices', () => {
       pagination,
     });
   });
+
+  it('forwards addressId, status, and statusOrder query params to the service', async () => {
+    requireCustomerIdMock.mockReturnValue('c1');
+    const controller = Object.create(CustomerInvoiceController.prototype);
+    controller.customerInvoiceService = {
+      listInvoices: jest.fn().mockResolvedValue({ invoices: [], pagination: {} }),
+    };
+    const request = { query: { addressId: 'a1', status: 'sent', statusOrder: 'asc' } };
+
+    await controller.listInvoices(request, { send: jest.fn() });
+
+    expect(controller.customerInvoiceService.listInvoices).toHaveBeenCalledWith('c1', {
+      page: undefined,
+      pageSize: undefined,
+      addressId: 'a1',
+      status: 'sent',
+      statusOrder: 'asc',
+    });
+  });
 });

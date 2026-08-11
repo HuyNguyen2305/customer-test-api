@@ -29,4 +29,21 @@ describe('CustomerEstimateController.listEstimates', () => {
       pagination,
     });
   });
+
+  it('forwards addressId from the query string to the service', async () => {
+    requireCustomerIdMock.mockReturnValue('c1');
+    const controller = Object.create(CustomerEstimateController.prototype);
+    controller.customerEstimateService = {
+      listEstimates: jest.fn().mockResolvedValue({ estimates: [], pagination: {} }),
+    };
+    const request = { query: { page: 2, pageSize: 10, addressId: 'addr1' } };
+
+    await controller.listEstimates(request, { send: jest.fn() });
+
+    expect(controller.customerEstimateService.listEstimates).toHaveBeenCalledWith('c1', {
+      page: 2,
+      pageSize: 10,
+      addressId: 'addr1',
+    });
+  });
 });

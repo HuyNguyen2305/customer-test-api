@@ -24,7 +24,23 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     const result = await service.getInvoiceById('i1', 'c1');
 
     expect(service.customerInvoiceRepository.findByIdForCustomer).toHaveBeenCalledWith('i1', 'c1');
-    expect(result).toEqual(baseInvoice);
+    expect(result).toEqual({
+      ...baseInvoice,
+      addressId: undefined,
+      addressLabel: undefined,
+      addressLine1: undefined,
+      addressLine2: undefined,
+      addressCity: undefined,
+      addressState: undefined,
+      addressZip: undefined,
+      addressCountry: undefined,
+      subtotal: 0,
+      discountAmount: 0,
+      taxableAmount: 0,
+      taxes: [],
+      taxTotal: 0,
+      total: 0,
+    });
     expect(result.items).toBeUndefined();
   });
 
@@ -41,7 +57,7 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     const result = await service.getInvoiceById('i1', 'c1');
 
     expect(result.items).toEqual([
-      { id: 'ii1', itemId: 'item1', description: 'Treatment', cost: 100, taxRateId: null, qty: 1, sortOrder: 0 },
+      { id: 'ii1', itemId: 'item1', description: 'Treatment', cost: 100, qty: 1, sortOrder: 0 },
     ]);
   });
 

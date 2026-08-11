@@ -25,7 +25,8 @@ const estimateDataSchema = {
     depositType: { type: 'string', enum: ['percent', 'flat'] },
     termsText: { type: ['string', 'null'] },
     notesText: { type: ['string', 'null'] },
-    status: { type: 'string', enum: ['draft', 'sent', 'approved', 'declined', 'expired'] },
+    status: { type: 'string', enum: ['sent', 'approved'] },
+    statusLabel: { type: 'string', enum: ['Open', 'Accepted'] },
   },
 };
 
@@ -43,6 +44,7 @@ export const listEstimatesSchema = {
     properties: {
       page: { type: 'integer', minimum: 1, default: 1 },
       pageSize: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+      addressId: { type: 'string' },
     },
   },
   response: {

@@ -110,6 +110,15 @@ const invoiceB = {
   balanceDue: 50,
 };
 
+const invoiceA2 = {
+  id: '11111111-2222-3333-4444-aaaaaaaaaaaa',
+  bookingId: bookingA2.id,
+  customerId: customerA.id,
+  status: 'draft',
+  addressId: addressA2.id,
+  balanceDue: 0,
+};
+
 const invoiceItemA = {
   id: '11111111-2222-3333-4444-888888888888',
   customerInvoiceId: invoiceA.id,
@@ -131,6 +140,20 @@ const estimateB = {
   bookingId: bookingB.id,
   customerId: customerB.id,
   status: 'sent',
+};
+
+const estimateDraftA = {
+  id: '22222222-3333-4444-5555-aaaaaaaaaaaa',
+  bookingId: bookingA.id,
+  customerId: customerA.id,
+  status: 'draft',
+};
+
+const estimateApprovedA2 = {
+  id: '22222222-3333-4444-5555-bbbbbbbbbbbb',
+  bookingId: bookingA2.id,
+  customerId: customerA.id,
+  status: 'approved',
 };
 
 const estimateItemA = {
@@ -241,9 +264,12 @@ module.exports = {
   bookingA3Pending,
   invoiceA,
   invoiceB,
+  invoiceA2,
   invoiceItemA,
   estimateA,
   estimateB,
+  estimateDraftA,
+  estimateApprovedA2,
   estimateItemA,
   paymentMethodA,
   paymentMethodA2,

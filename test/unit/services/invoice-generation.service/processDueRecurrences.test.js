@@ -8,6 +8,7 @@ function buildService({
   createdInvoice,
   newBookings = [],
   bookingAlreadyInvoiced = {},
+  recurringBooking = null,
 } = {}) {
   const service = Object.create(InvoiceGenerationService.prototype);
   service.invoiceFrequencyRepository = { findAllActiveRecurring: jest.fn().mockResolvedValue(frequencies) };
@@ -16,8 +17,16 @@ function buildService({
     findByBookingId: jest.fn((bookingId) => Promise.resolve(bookingAlreadyInvoiced[bookingId] || null)),
     createInvoice: jest.fn().mockResolvedValue(createdInvoice || { id: 'new-invoice' }),
   };
-  service.bookingRepository = { findCreatedSinceByService: jest.fn().mockResolvedValue(newBookings) };
+  service.bookingRepository = {
+    findCreatedSinceByService: jest.fn().mockResolvedValue(newBookings),
+    findByPk: jest.fn().mockResolvedValue(recurringBooking),
+  };
   service.serviceInvoiceRepository = { findByServiceId: jest.fn() };
+  service.addressRepository = { getByIdForCustomer: jest.fn().mockResolvedValue(null) };
+  service.invoiceItemRepository = { listByServiceInvoiceId: jest.fn().mockResolvedValue([]) };
+  service.customerInvoiceItemRepository = { bulkCreateItems: jest.fn().mockResolvedValue([]) };
+  service.taxRateRepository = { findByState: jest.fn().mockResolvedValue(null) };
+  service.customerInvoiceTaxRepository = { createTax: jest.fn().mockResolvedValue(null) };
   return service;
 }
 
@@ -44,13 +53,17 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
     const created = await service.processDueRecurrences({ asOf: new Date('2026-02-15') });
 
     expect(created).toHaveLength(1);
-    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith({
-      bookingId: 'b1',
-      customerId: 'c1',
-      sourceInvoiceId: 'si1',
-      status: 'draft',
-      balanceDue: 0,
-    });
+    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
+      {
+        bookingId: 'b1',
+        customerId: 'c1',
+        sourceInvoiceId: 'si1',
+        status: 'draft',
+        balanceDue: 0,
+        addressId: null,
+      },
+      expect.anything(),
+    );
   });
 
   it('catches up on every overdue period, not just the first, when a run is late', async () => {
@@ -65,13 +78,17 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
 
     expect(created).toHaveLength(3);
     expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledTimes(3);
-    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith({
-      bookingId: 'b1',
-      customerId: 'c1',
-      sourceInvoiceId: 'si1',
-      status: 'draft',
-      balanceDue: 0,
-    });
+    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
+      {
+        bookingId: 'b1',
+        customerId: 'c1',
+        sourceInvoiceId: 'si1',
+        status: 'draft',
+        balanceDue: 0,
+        addressId: null,
+      },
+      expect.anything(),
+    );
   });
 
   it('does not double-generate a follow-up invoice when run twice for the same period', async () => {
@@ -115,7 +132,8 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
     expect(service.bookingRepository.findCreatedSinceByService).toHaveBeenCalledWith('s1', latestInvoice.createdAt);
     expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledTimes(1);
     expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
-      expect.objectContaining({ bookingId: 'b2', sourceInvoiceId: 'si1' }),
+      expect.objectContaining({ bookingId: 'b2', sourceInvoiceId: 'si1', addressId: null }),
+      expect.anything(),
     );
     expect(created).toHaveLength(1);
   });

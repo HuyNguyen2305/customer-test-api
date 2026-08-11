@@ -13,33 +13,46 @@ import { requestContext } from '#common/request-context.js';
 
 export const TEST_SCHEMA = 'test_tenant';
 
-let schemaReady = false;
+// Caches the in-flight promise, not just a boolean: if a caller's sync pass
+// runs longer than the test that triggered it, a *later* test must await the
+// same operation rather than kicking off a second one concurrently against
+// the same tables.
+let schemaReadyPromise = null;
 
-async function ensureSchema() {
-  if (schemaReady) return;
-  await sequelize.createSchema(TEST_SCHEMA, { ifNotExists: true }).catch(() => {});
+function ensureSchema() {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = (async () => {
+      // Drop and recreate rather than incrementally ALTER: this always
+      // matches the current models exactly (no risk of the shared schema
+      // drifting from them again as they evolve), it's fast since there's no
+      // diffing involved, and it sidesteps Sequelize's known fragility around
+      // altering Postgres ENUM types.
+      await sequelize.query(`DROP SCHEMA IF EXISTS "${TEST_SCHEMA}" CASCADE`);
+      await sequelize.createSchema(TEST_SCHEMA, { ifNotExists: true });
 
-  // Models aren't declared in FK-dependency order, so a single top-to-bottom
-  // sync pass can hit a model whose referenced table doesn't exist yet.
-  // Retry the stragglers across passes until none are left (or nothing
-  // makes progress, meaning a real error) instead of assuming an order.
-  let pending = Object.values(models);
-  let lastError;
-  while (pending.length) {
-    const stillPending = [];
-    for (const model of pending) {
-      try {
-        await model.schema(TEST_SCHEMA).sync();
-      } catch (error) {
-        lastError = error;
-        stillPending.push(model);
+      // Models aren't declared in FK-dependency order, so a single top-to-bottom
+      // sync pass can hit a model whose referenced table doesn't exist yet.
+      // Retry the stragglers across passes until none are left (or nothing
+      // makes progress, meaning a real error) instead of assuming an order.
+      let pending = Object.values(models);
+      let lastError;
+      while (pending.length) {
+        const stillPending = [];
+        for (const model of pending) {
+          try {
+            await model.schema(TEST_SCHEMA).sync();
+          } catch (error) {
+            lastError = error;
+            stillPending.push(model);
+          }
+        }
+        if (stillPending.length === pending.length) throw lastError;
+        pending = stillPending;
       }
-    }
-    if (stillPending.length === pending.length) throw lastError;
-    pending = stillPending;
+    })();
   }
 
-  schemaReady = true;
+  return schemaReadyPromise;
 }
 
 export async function seedWithTransaction(fixtures, testFn) {

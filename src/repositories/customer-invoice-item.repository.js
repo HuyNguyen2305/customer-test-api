@@ -13,9 +13,9 @@ class CustomerInvoiceItemRepository extends BaseRepository {
     return this.create(data);
   }
 
-  bulkCreateItems(items) {
+  bulkCreateItems(items, options) {
     if (!items.length) return Promise.resolve([]);
-    return this.bulkCreate(items);
+    return this.bulkCreate(items, options);
   }
 
   async updateItem(id, customerInvoiceId, data) {

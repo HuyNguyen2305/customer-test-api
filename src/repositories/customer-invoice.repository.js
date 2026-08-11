@@ -15,8 +15,8 @@ class CustomerInvoiceRepository extends BaseRepository {
     return this.findOne({ where: { bookingId } });
   }
 
-  createInvoice(data) {
-    return this.create(data);
+  createInvoice(data, options) {
+    return this.create(data, options);
   }
 
   findBySourceInvoiceId(sourceInvoiceId) {

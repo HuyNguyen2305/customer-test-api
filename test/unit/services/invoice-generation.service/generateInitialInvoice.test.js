@@ -12,6 +12,11 @@ function buildService({ booking, existingInvoice, serviceInvoice, created } = {}
     createInvoice: jest.fn().mockResolvedValue(created),
   };
   service.serviceInvoiceRepository = { findByServiceId: jest.fn().mockResolvedValue(serviceInvoice) };
+  service.addressRepository = { getByIdForCustomer: jest.fn().mockResolvedValue(null) };
+  service.invoiceItemRepository = { listByServiceInvoiceId: jest.fn().mockResolvedValue([]) };
+  service.customerInvoiceItemRepository = { bulkCreateItems: jest.fn().mockResolvedValue([]) };
+  service.taxRateRepository = { findByState: jest.fn().mockResolvedValue(null) };
+  service.customerInvoiceTaxRepository = { createTax: jest.fn().mockResolvedValue(null) };
   return service;
 }
 
@@ -38,14 +43,18 @@ describe('InvoiceGenerationService.generateInitialInvoice', () => {
 
     const result = await service.generateInitialInvoice('b1');
 
-    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith({
-      bookingId: 'b1',
-      customerId: 'c1',
-      sourceInvoiceId: 'si1',
-      status: 'draft',
-      balanceDue: 0,
-      isInitial: true,
-    });
+    expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
+      {
+        bookingId: 'b1',
+        customerId: 'c1',
+        sourceInvoiceId: 'si1',
+        status: 'draft',
+        balanceDue: 0,
+        isInitial: true,
+        addressId: null,
+      },
+      expect.anything(),
+    );
     expect(result).toBe(created);
   });
 
@@ -56,7 +65,8 @@ describe('InvoiceGenerationService.generateInitialInvoice', () => {
     await service.generateInitialInvoice('b1');
 
     expect(service.customerInvoiceRepository.createInvoice).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceInvoiceId: null, isInitial: true }),
+      expect.objectContaining({ sourceInvoiceId: null, isInitial: true, addressId: null }),
+      expect.anything(),
     );
   });
 

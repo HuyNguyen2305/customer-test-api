@@ -9,10 +9,14 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const scopedModel = { findOne: jest.fn().mockResolvedValue(invoice) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
+    const scopedAddressModel = {};
+    const scopedTaxModel = {};
     const customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = customerInvoiceItemModel;
+    repository.addressModel = { schema: jest.fn().mockReturnValue(scopedAddressModel) };
+    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue(scopedTaxModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'c1'),
@@ -22,7 +26,11 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'i1', customerId: 'c1' },
       attributes: { exclude: ['createdAt', 'updatedAt'] },
-      include: [{ model: scopedItemModel, as: 'items' }],
+      include: [
+        { model: scopedItemModel, as: 'items' },
+        { model: scopedAddressModel, as: 'address' },
+        { model: scopedTaxModel, as: 'taxes' },
+      ],
     });
     expect(result).toBe(invoice);
   });
@@ -33,6 +41,8 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'someone-else'),

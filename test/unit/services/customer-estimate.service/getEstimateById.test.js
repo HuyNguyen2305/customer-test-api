@@ -26,7 +26,7 @@ describe('CustomerEstimateService.getEstimateById', () => {
     const result = await service.getEstimateById('e1', 'c1');
 
     expect(service.customerEstimateRepository.findByIdForCustomer).toHaveBeenCalledWith('e1', 'c1');
-    expect(result).toEqual(baseEstimate);
+    expect(result).toEqual({ ...baseEstimate, statusLabel: 'Open' });
     expect(result.items).toBeUndefined();
   });
 
@@ -60,5 +60,14 @@ describe('CustomerEstimateService.getEstimateById', () => {
     service.customerEstimateRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(null) };
 
     await expect(service.getEstimateById('e1', 'someone-else')).rejects.toThrow(NotFoundError);
+  });
+
+  it.each(['draft', 'declined', 'expired'])('throws NotFoundError when the estimate status is %s', async (status) => {
+    const service = Object.create(CustomerEstimateService.prototype);
+    service.customerEstimateRepository = {
+      findByIdForCustomer: jest.fn().mockResolvedValue({ ...baseEstimate, status }),
+    };
+
+    await expect(service.getEstimateById('e1', 'c1')).rejects.toThrow(NotFoundError);
   });
 });

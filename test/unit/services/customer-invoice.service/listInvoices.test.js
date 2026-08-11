@@ -38,6 +38,20 @@ describe('CustomerInvoiceService.listInvoices', () => {
           notesText: null,
           status: 'sent',
           balanceDue: 100,
+          addressId: undefined,
+          addressLabel: undefined,
+          addressLine1: undefined,
+          addressLine2: undefined,
+          addressCity: undefined,
+          addressState: undefined,
+          addressZip: undefined,
+          addressCountry: undefined,
+          subtotal: 0,
+          discountAmount: 0,
+          taxableAmount: 0,
+          taxes: [],
+          taxTotal: 0,
+          total: 0,
         },
       ],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
@@ -64,5 +78,20 @@ describe('CustomerInvoiceService.listInvoices', () => {
 
     expect(service.customerInvoiceRepository.listByCustomerId).toHaveBeenCalledWith('c1', { limit: 10, offset: 20 });
     expect(result.pagination).toEqual({ page: 3, pageSize: 10, total: 45, totalPages: 5 });
+  });
+
+  it('forwards addressId, status, and statusOrder to the repository unchanged', async () => {
+    const service = Object.create(CustomerInvoiceService.prototype);
+    service.customerInvoiceRepository = { listByCustomerId: jest.fn().mockResolvedValue({ rows: [], count: 0 }) };
+
+    await service.listInvoices('c1', { addressId: 'a1', status: 'sent', statusOrder: 'asc' });
+
+    expect(service.customerInvoiceRepository.listByCustomerId).toHaveBeenCalledWith('c1', {
+      limit: 20,
+      offset: 0,
+      addressId: 'a1',
+      status: 'sent',
+      statusOrder: 'asc',
+    });
   });
 });

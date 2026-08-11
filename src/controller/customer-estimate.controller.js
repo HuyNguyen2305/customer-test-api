@@ -7,10 +7,11 @@ class CustomerEstimateController {
 
   async listEstimates(request, reply) {
     const customerId = requireCustomerId();
-    const { page, pageSize } = request.query;
+    const { page, pageSize, addressId } = request.query;
     const { estimates, pagination } = await this.customerEstimateService.listEstimates(customerId, {
       page,
       pageSize,
+      addressId,
     });
     reply.send({ success: true, message: 'Estimates retrieved', data: estimates, pagination });
   }

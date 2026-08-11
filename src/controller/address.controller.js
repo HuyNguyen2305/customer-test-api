@@ -34,7 +34,16 @@ class AddressController {
 
   async updateAddress(request, reply) {
     const customerId = requireCustomerId();
-    const data = await this.addressService.updateAddress(customerId, request.params.id, request.body);
+    const { label, line1, line2, city, state, zip, country } = request.body;
+    const data = await this.addressService.updateAddress(customerId, request.params.id, {
+      label,
+      line1,
+      line2,
+      city,
+      state,
+      zip,
+      country,
+    });
     reply.send({ success: true, message: 'Address updated', data });
   }
 
