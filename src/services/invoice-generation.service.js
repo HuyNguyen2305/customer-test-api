@@ -15,6 +15,7 @@ class InvoiceGenerationService {
     customerInvoiceItemRepository,
     taxRateRepository,
     customerInvoiceTaxRepository,
+    customerEstimateRepository,
   }) {
     this.bookingRepository = bookingRepository;
     this.customerInvoiceRepository = customerInvoiceRepository;
@@ -25,6 +26,7 @@ class InvoiceGenerationService {
     this.customerInvoiceItemRepository = customerInvoiceItemRepository;
     this.taxRateRepository = taxRateRepository;
     this.customerInvoiceTaxRepository = customerInvoiceTaxRepository;
+    this.customerEstimateRepository = customerEstimateRepository;
   }
 
   // Copies the booking's address onto the invoice at generation time, frozen from
@@ -103,6 +105,95 @@ class InvoiceGenerationService {
       await this.attachAutoTax(invoice, addressSnapshot, { transaction });
       return invoice;
     });
+  }
+
+  // Copies the source estimate's items onto the newly created invoice.
+  // CustomerInvoiceItem has no taxRateId column (invoice tax is invoice-level,
+  // not per-line), so that field is intentionally dropped here.
+  async copyEstimateLineItems(invoice, items, options = {}) {
+    if (!items?.length) return;
+
+    await this.customerInvoiceItemRepository.bulkCreateItems(
+      items.map((item) => ({
+        customerInvoiceId: invoice.id,
+        itemId: item.itemId,
+        description: item.description,
+        cost: item.cost,
+        qty: item.qty,
+        sortOrder: item.sortOrder,
+      })),
+      options,
+    );
+  }
+
+  // Freezes one CustomerInvoiceTax row per distinct taxRateId referenced by the
+  // source estimate's items — same snapshot rationale as attachAutoTax, just
+  // sourced from the estimate's own per-line tax rates instead of an
+  // address-state lookup.
+  async attachEstimateTaxes(invoice, items, options = {}) {
+    const taxRateIds = [...new Set((items ?? []).map((item) => item.taxRateId).filter(Boolean))];
+
+    for (const taxRateId of taxRateIds) {
+      const taxRate = await this.taxRateRepository.findByPk(taxRateId);
+      if (!taxRate) continue;
+
+      await this.customerInvoiceTaxRepository.createTax(
+        {
+          customerInvoiceId: invoice.id,
+          taxRateId: taxRate.id,
+          name: taxRate.name,
+          code: taxRate.code,
+          rate: taxRate.rate,
+          type: taxRate.type,
+        },
+        options,
+      );
+    }
+  }
+
+  // Creates an invoice from a CustomerEstimate: the estimate's fields/items/
+  // per-item tax rates are snapshotted onto a new draft invoice, and — since
+  // this is the only status-mutating action on estimates today — the estimate
+  // is advanced to 'approved' in the same transaction, effectively locking it.
+  async generateInvoiceFromEstimate(estimate, customerId) {
+    const existingInvoice = await this.customerInvoiceRepository.findByEstimateId(estimate.id);
+    if (existingInvoice) throw new ConflictError('Invoice already exists for this estimate');
+
+    const booking = estimate.bookingId ? await this.bookingRepository.findByPk(estimate.bookingId) : null;
+    const addressSnapshot = booking ? await this.buildAddressSnapshot(booking) : { addressId: null };
+
+    try {
+      return await sequelize.transaction(async (transaction) => {
+        const invoice = await this.customerInvoiceRepository.createInvoice(
+          {
+            bookingId: estimate.bookingId,
+            customerId,
+            estimateId: estimate.id,
+            status: 'draft',
+            balanceDue: 0,
+            discountValue: estimate.discountValue,
+            discountType: estimate.discountType,
+            termsText: estimate.termsText,
+            notesText: estimate.notesText,
+            ...addressSnapshot,
+          },
+          { transaction },
+        );
+        await this.copyEstimateLineItems(invoice, estimate.items, { transaction });
+        await this.attachEstimateTaxes(invoice, estimate.items, { transaction });
+
+        if (estimate.status !== 'approved') {
+          await this.customerEstimateRepository.updateStatus(estimate.id, customerId, 'approved', { transaction });
+        }
+
+        return invoice;
+      });
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        throw new ConflictError('Invoice already exists for this estimate');
+      }
+      throw error;
+    }
   }
 
   async generateInitialInvoice(bookingId) {

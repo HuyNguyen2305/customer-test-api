@@ -37,6 +37,7 @@ describe('CustomerInvoiceService.listInvoices', () => {
           termsText: 'Net 30',
           notesText: null,
           status: 'sent',
+          statusLabel: 'Open',
           balanceDue: 100,
           addressId: undefined,
           addressLabel: undefined,
@@ -78,6 +79,18 @@ describe('CustomerInvoiceService.listInvoices', () => {
 
     expect(service.customerInvoiceRepository.listByCustomerId).toHaveBeenCalledWith('c1', { limit: 10, offset: 20 });
     expect(result.pagination).toEqual({ page: 3, pageSize: 10, total: 45, totalPages: 5 });
+  });
+
+  it('maps a non-sent status (e.g. draft) to a null statusLabel', async () => {
+    const draftRow = { ...invoiceRow, status: 'draft' };
+    const service = Object.create(CustomerInvoiceService.prototype);
+    service.customerInvoiceRepository = {
+      listByCustomerId: jest.fn().mockResolvedValue({ rows: [draftRow], count: 1 }),
+    };
+
+    const result = await service.listInvoices('c1');
+
+    expect(result.invoices[0].statusLabel).toBeNull();
   });
 
   it('forwards addressId, status, and statusOrder to the repository unchanged', async () => {

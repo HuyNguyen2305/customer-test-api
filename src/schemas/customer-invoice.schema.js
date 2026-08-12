@@ -34,6 +34,7 @@ const invoiceDataSchema = {
     termsText: { type: ['string', 'null'] },
     notesText: { type: ['string', 'null'] },
     status: { type: 'string', enum: ['draft', 'sent', 'void', 'write_off', 'paid'] },
+    statusLabel: { type: ['string', 'null'] },
     balanceDue: { type: 'number' },
     addressId: { type: ['string', 'null'] },
     addressLabel: { type: ['string', 'null'] },
@@ -52,7 +53,7 @@ const invoiceDataSchema = {
   },
 };
 
-const invoiceDetailDataSchema = {
+export const invoiceDetailDataSchema = {
   type: 'object',
   properties: {
     ...invoiceDataSchema.properties,

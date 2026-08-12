@@ -1,3 +1,5 @@
+import { invoiceDetailDataSchema } from './customer-invoice.schema.js';
+
 const estimateItemDataSchema = {
   type: 'object',
   properties: {
@@ -83,6 +85,26 @@ export const getEstimateByIdSchema = {
         success: { type: 'boolean' },
         message: { type: 'string' },
         data: estimateDetailDataSchema,
+      },
+    },
+  },
+};
+
+export const createInvoiceFromEstimateSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: invoiceDetailDataSchema,
       },
     },
   },

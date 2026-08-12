@@ -15,6 +15,10 @@ class CustomerInvoiceRepository extends BaseRepository {
     return this.findOne({ where: { bookingId } });
   }
 
+  findByEstimateId(estimateId) {
+    return this.findOne({ where: { estimateId } });
+  }
+
   createInvoice(data, options) {
     return this.create(data, options);
   }

@@ -187,6 +187,8 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.map((invoice) => invoice.id).sort()).toEqual([invoiceA.id, invoiceA2.id].sort());
+      expect(body.data.find((invoice) => invoice.id === invoiceA.id).statusLabel).toBe('Open');
+      expect(body.data.find((invoice) => invoice.id === invoiceA2.id).statusLabel).toBeNull();
 
       await app.close();
     });
@@ -321,6 +323,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       const body = response.json();
       expect(body.data.id).toBe(invoiceA.id);
       expect(body.data.items).toHaveLength(1);
+      expect(body.data.statusLabel).toBe('Open');
 
       await app.close();
     });
@@ -452,6 +455,99 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.map((estimate) => estimate.id)).toEqual([estimateApprovedA2.id]);
+
+      await app.close();
+    });
+  });
+
+  it("POST /customer/estimates/:id/invoice creates an invoice and flips a 'sent' estimate to 'approved'", async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/customer/estimates/${estimateA.id}/invoice`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.items).toHaveLength(1);
+      expect(body.data.items[0]).toMatchObject({ itemId: item1.id, cost: estimateItemA.cost });
+
+      const estimateResponse = await app.inject({
+        method: 'GET',
+        url: `/customer/estimates/${estimateA.id}`,
+        headers: headersFor(customerA.id),
+      });
+      expect(estimateResponse.json().data.status).toBe('approved');
+
+      const invoiceResponse = await app.inject({
+        method: 'GET',
+        url: `/customer/invoices/${body.data.id}`,
+        headers: headersFor(customerA.id),
+      });
+      expect(invoiceResponse.statusCode).toBe(200);
+      expect(invoiceResponse.json().data.id).toBe(body.data.id);
+
+      await app.close();
+    });
+  });
+
+  it('POST /customer/estimates/:id/invoice returns 404 for a draft estimate (not eligible to invoice)', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/customer/estimates/${estimateDraftA.id}/invoice`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      await app.close();
+    });
+  });
+
+  it('POST /customer/estimates/:id/invoice returns 409 on a second attempt for an already-invoiced estimate', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const first = await app.inject({
+        method: 'POST',
+        url: `/customer/estimates/${estimateApprovedA2.id}/invoice`,
+        headers: headersFor(customerA.id),
+      });
+      expect(first.statusCode).toBe(200);
+
+      const second = await app.inject({
+        method: 'POST',
+        url: `/customer/estimates/${estimateApprovedA2.id}/invoice`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(second.statusCode).toBe(409);
+
+      await app.close();
+    });
+  });
+
+  it('POST /customer/estimates/:id/invoice rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/customer/estimates/${estimateA.id}/invoice`,
+        headers: headersFor(),
+      });
+
+      expect(response.statusCode).toBe(401);
 
       await app.close();
     });

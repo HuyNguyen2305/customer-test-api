@@ -20,6 +20,10 @@ class CustomerEstimateRepository extends BaseRepository {
     });
   }
 
+  updateStatus(id, customerId, status, options = {}) {
+    return this.update({ status }, { where: { id, customerId }, ...options });
+  }
+
   findByIdForCustomer(id, customerId) {
     return this.findOne({
       where: { id, customerId },

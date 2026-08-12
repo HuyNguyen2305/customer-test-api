@@ -26,6 +26,7 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     expect(service.customerInvoiceRepository.findByIdForCustomer).toHaveBeenCalledWith('i1', 'c1');
     expect(result).toEqual({
       ...baseInvoice,
+      statusLabel: 'Open',
       addressId: undefined,
       addressLabel: undefined,
       addressLine1: undefined,
@@ -66,5 +67,15 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(null) };
 
     await expect(service.getInvoiceById('i1', 'someone-else')).rejects.toThrow(NotFoundError);
+  });
+
+  it('maps a non-sent status (e.g. draft) to a null statusLabel', async () => {
+    const draftInvoice = { ...baseInvoice, status: 'draft' };
+    const service = Object.create(CustomerInvoiceService.prototype);
+    service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(draftInvoice) };
+
+    const result = await service.getInvoiceById('i1', 'c1');
+
+    expect(result.statusLabel).toBeNull();
   });
 });

@@ -19,6 +19,10 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
+      estimateId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
       addressId: {
         type: DataTypes.UUID,
         allowNull: true,

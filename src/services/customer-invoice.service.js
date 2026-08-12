@@ -1,5 +1,10 @@
 import { NotFoundError } from '#configs/error.js';
 
+// Only 'sent' has a portal-facing label today: that's the status the client
+// portal's "Pay My Balance" screen groups under "Open" once an admin sends
+// the invoice. Other statuses aren't part of this feature's criteria.
+const STATUS_LABELS = { sent: 'Open' };
+
 // Derived from the current items + frozen tax rows every time an invoice is
 // read — nothing here is persisted, so there's no stored total that can drift
 // out of sync with the underlying items/taxes.
@@ -43,6 +48,7 @@ function toInvoiceData(invoice) {
     termsText: invoice.termsText,
     notesText: invoice.notesText,
     status: invoice.status,
+    statusLabel: STATUS_LABELS[invoice.status] ?? null,
     balanceDue: invoice.balanceDue,
     addressId: invoice.addressId,
     addressLabel: invoice.addressLabel,

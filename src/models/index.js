@@ -221,6 +221,8 @@ Booking.hasMany(CustomerEstimate, { foreignKey: 'bookingId' });
 CustomerEstimate.belongsTo(Booking, { foreignKey: 'bookingId' });
 CustomerEstimate.belongsTo(Customer, { foreignKey: 'customerId' });
 CustomerEstimate.belongsTo(ServiceEstimate, { foreignKey: 'sourceEstimateId' });
+CustomerEstimate.hasOne(CustomerInvoice, { foreignKey: 'estimateId' });
+CustomerInvoice.belongsTo(CustomerEstimate, { foreignKey: 'estimateId' });
 Customer.hasMany(CustomerEstimate, { foreignKey: 'customerId' });
 
 CustomerEstimate.hasMany(CustomerEstimateItem, { foreignKey: 'customerEstimateId', as: 'items' });

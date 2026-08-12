@@ -33,8 +33,10 @@ function toEstimateData(estimate) {
 }
 
 class CustomerEstimateService {
-  constructor({ customerEstimateRepository }) {
+  constructor({ customerEstimateRepository, invoiceGenerationService, customerInvoiceService }) {
     this.customerEstimateRepository = customerEstimateRepository;
+    this.invoiceGenerationService = invoiceGenerationService;
+    this.customerInvoiceService = customerInvoiceService;
   }
 
   async listEstimates(customerId, { page = 1, pageSize = 20, addressId } = {}) {
@@ -55,6 +57,14 @@ class CustomerEstimateService {
     const estimate = await this.customerEstimateRepository.findByIdForCustomer(id, customerId);
     if (!estimate || !PORTAL_VISIBLE_STATUSES.includes(estimate.status)) throw new NotFoundError('Estimate not found');
     return toEstimateData(estimate);
+  }
+
+  async createInvoiceFromEstimate(id, customerId) {
+    const estimate = await this.customerEstimateRepository.findByIdForCustomer(id, customerId);
+    if (!estimate || !PORTAL_VISIBLE_STATUSES.includes(estimate.status)) throw new NotFoundError('Estimate not found');
+
+    const invoice = await this.invoiceGenerationService.generateInvoiceFromEstimate(estimate, customerId);
+    return this.customerInvoiceService.getInvoiceById(invoice.id, customerId);
   }
 }
 
