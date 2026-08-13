@@ -1,10 +1,22 @@
 import { BaseRepository } from '#common/base-repository.js';
 
 class CustomerEstimateRepository extends BaseRepository {
-  constructor({ customerEstimateModel, customerEstimateItemModel, bookingModel }) {
+  constructor({
+    customerEstimateModel,
+    customerEstimateItemModel,
+    bookingModel,
+    addressModel,
+    customerModel,
+    taxRateModel,
+    itemModel,
+  }) {
     super(customerEstimateModel);
     this.customerEstimateItemModel = customerEstimateItemModel;
     this.bookingModel = bookingModel;
+    this.addressModel = addressModel;
+    this.customerModel = customerModel;
+    this.taxRateModel = taxRateModel;
+    this.itemModel = itemModel;
   }
 
   listByCustomerId(customerId, { limit, offset, addressId, statuses } = {}) {
@@ -27,8 +39,19 @@ class CustomerEstimateRepository extends BaseRepository {
   findByIdForCustomer(id, customerId) {
     return this.findOne({
       where: { id, customerId },
-      attributes: { exclude: ['createdAt', 'updatedAt'] },
-      include: [{ model: this.scopeModel(this.customerEstimateItemModel), as: 'items' }],
+      attributes: { exclude: ['updatedAt'] },
+      include: [
+        {
+          model: this.scopeModel(this.customerEstimateItemModel),
+          as: 'items',
+          include: [{ model: this.scopeModel(this.taxRateModel) }, { model: this.scopeModel(this.itemModel) }],
+        },
+        {
+          model: this.scopeModel(this.bookingModel),
+          include: [{ model: this.scopeModel(this.addressModel) }],
+        },
+        { model: this.scopeModel(this.customerModel), as: 'Customer' },
+      ],
     });
   }
 }

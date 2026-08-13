@@ -47,6 +47,8 @@ import CustomerPaymentMethodService from '#service/customer-payment-method.servi
 import CustomerDocumentService from '#service/customer-document.service.js';
 import AddressService from '#service/address.service.js';
 import CustomerInvoiceItemService from '#service/customer-invoice-item.service.js';
+import InvoicePdfService from '#service/invoice-pdf.service.js';
+import EstimatePdfService from '#service/estimate-pdf.service.js';
 
 import AuthController from '#controller/auth.controller.js';
 import BalanceController from '#controller/balance.controller.js';
@@ -90,6 +92,7 @@ container.register({
   taxRateModel: asValue(models.TaxRate),
   invoiceItemModel: asValue(models.InvoiceItem),
   customerInvoiceTaxModel: asValue(models.CustomerInvoiceTax),
+  itemModel: asValue(models.Item),
 
   [REPOSITORY_KEYS.AUTH_REPOSITORY]: asClass(AuthRepository).scoped(),
   [REPOSITORY_KEYS.BALANCE_REPOSITORY]: asClass(BalanceRepository).scoped(),
@@ -134,6 +137,8 @@ container.register({
   [SERVICE_KEYS.CUSTOMER_DOCUMENT_SERVICE]: asClass(CustomerDocumentService).scoped(),
   [SERVICE_KEYS.ADDRESS_SERVICE]: asClass(AddressService).scoped(),
   [SERVICE_KEYS.CUSTOMER_INVOICE_ITEM_SERVICE]: asClass(CustomerInvoiceItemService).scoped(),
+  [SERVICE_KEYS.INVOICE_PDF_SERVICE]: asClass(InvoicePdfService).scoped(),
+  [SERVICE_KEYS.ESTIMATE_PDF_SERVICE]: asClass(EstimatePdfService).scoped(),
 
   [CONTROLLER_KEYS.AUTH_CONTROLLER]: asClass(AuthController).scoped(),
   [CONTROLLER_KEYS.BALANCE_CONTROLLER]: asClass(BalanceController).scoped(),

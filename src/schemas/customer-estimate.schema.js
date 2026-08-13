@@ -5,6 +5,7 @@ const estimateItemDataSchema = {
   properties: {
     id: { type: 'string' },
     itemId: { type: 'string' },
+    itemName: { type: ['string', 'null'] },
     description: { type: ['string', 'null'] },
     cost: { type: 'number' },
     taxRateId: { type: ['string', 'null'] },
@@ -20,6 +21,7 @@ const estimateDataSchema = {
     bookingId: { type: 'string' },
     customerId: { type: 'string' },
     sourceEstimateId: { type: ['string', 'null'] },
+    createdAt: { type: 'string' },
     type: { type: 'string', enum: ['basic', 'dynamic', 'package'] },
     discountValue: { type: 'number' },
     discountType: { type: 'string', enum: ['percent', 'flat'] },
@@ -29,6 +31,11 @@ const estimateDataSchema = {
     notesText: { type: ['string', 'null'] },
     status: { type: 'string', enum: ['sent', 'approved'] },
     statusLabel: { type: 'string', enum: ['Open', 'Accepted'] },
+    subtotal: { type: 'number' },
+    discountAmount: { type: 'number' },
+    taxableAmount: { type: 'number' },
+    taxTotal: { type: 'number' },
+    total: { type: 'number' },
   },
 };
 
@@ -86,6 +93,16 @@ export const getEstimateByIdSchema = {
         message: { type: 'string' },
         data: estimateDetailDataSchema,
       },
+    },
+  },
+};
+
+export const getEstimatePdfSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string' },
     },
   },
 };

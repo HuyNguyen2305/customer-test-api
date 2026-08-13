@@ -44,6 +44,8 @@ export const SERVICE_KEYS = {
   CUSTOMER_DOCUMENT_SERVICE: 'customerDocumentService',
   ADDRESS_SERVICE: 'addressService',
   CUSTOMER_INVOICE_ITEM_SERVICE: 'customerInvoiceItemService',
+  INVOICE_PDF_SERVICE: 'invoicePdfService',
+  ESTIMATE_PDF_SERVICE: 'estimatePdfService',
 };
 
 export const CONTROLLER_KEYS = {

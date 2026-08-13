@@ -3,12 +3,41 @@ import { NotFoundError } from '#configs/error.js';
 const PORTAL_VISIBLE_STATUSES = ['sent', 'approved'];
 const STATUS_LABELS = { sent: 'Open', approved: 'Accepted' };
 
-function toEstimateData(estimate) {
+// Derived from the current items every time an estimate is read, mirroring
+// CustomerInvoiceService.computeTotals - nothing here is persisted. Tax is
+// per-item (CustomerEstimateItem.taxRateId -> TaxRate.rate), not a separate
+// junction table like invoices, so it only appears when an item's row was
+// loaded with its TaxRate association.
+function computeEstimateTotals(estimate) {
+  const items = estimate.items ?? [];
+
+  const subtotal = items.reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
+  const discountAmount =
+    estimate.discountType === 'flat'
+      ? Number(estimate.discountValue)
+      : subtotal * (Number(estimate.discountValue) / 100);
+  const taxableAmount = subtotal - discountAmount;
+  const taxTotal = items.reduce(
+    (sum, item) => sum + Number(item.cost) * item.qty * (Number(item.TaxRate?.rate ?? 0) / 100),
+    0,
+  );
+
+  return {
+    subtotal,
+    discountAmount,
+    taxableAmount,
+    taxTotal,
+    total: taxableAmount + taxTotal,
+  };
+}
+
+export function toEstimateData(estimate) {
   return {
     id: estimate.id,
     bookingId: estimate.bookingId,
     customerId: estimate.customerId,
     sourceEstimateId: estimate.sourceEstimateId,
+    createdAt: estimate.createdAt,
     type: estimate.type,
     discountValue: estimate.discountValue,
     discountType: estimate.discountType,
@@ -18,10 +47,12 @@ function toEstimateData(estimate) {
     notesText: estimate.notesText,
     status: estimate.status,
     statusLabel: STATUS_LABELS[estimate.status],
+    ...computeEstimateTotals(estimate),
     ...(estimate.items && {
       items: estimate.items.map((item) => ({
         id: item.id,
         itemId: item.itemId,
+        itemName: item.Item?.name ?? null,
         description: item.description,
         cost: item.cost,
         taxRateId: item.taxRateId,

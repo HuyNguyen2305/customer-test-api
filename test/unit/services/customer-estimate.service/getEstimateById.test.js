@@ -26,7 +26,15 @@ describe('CustomerEstimateService.getEstimateById', () => {
     const result = await service.getEstimateById('e1', 'c1');
 
     expect(service.customerEstimateRepository.findByIdForCustomer).toHaveBeenCalledWith('e1', 'c1');
-    expect(result).toEqual({ ...baseEstimate, statusLabel: 'Open' });
+    expect(result).toEqual({
+      ...baseEstimate,
+      statusLabel: 'Open',
+      subtotal: 0,
+      discountAmount: 5,
+      taxableAmount: -5,
+      taxTotal: 0,
+      total: -5,
+    });
     expect(result.items).toBeUndefined();
   });
 
@@ -51,7 +59,16 @@ describe('CustomerEstimateService.getEstimateById', () => {
     const result = await service.getEstimateById('e1', 'c1');
 
     expect(result.items).toEqual([
-      { id: 'ei1', itemId: 'item1', description: 'Quoted treatment', cost: 80, taxRateId: null, qty: 1, sortOrder: 0 },
+      {
+        id: 'ei1',
+        itemId: 'item1',
+        itemName: null,
+        description: 'Quoted treatment',
+        cost: 80,
+        taxRateId: null,
+        qty: 1,
+        sortOrder: 0,
+      },
     ]);
   });
 

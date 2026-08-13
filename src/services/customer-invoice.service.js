@@ -37,12 +37,13 @@ function computeTotals(invoice) {
   };
 }
 
-function toInvoiceData(invoice) {
+export function toInvoiceData(invoice) {
   return {
     id: invoice.id,
     bookingId: invoice.bookingId,
     customerId: invoice.customerId,
     sourceInvoiceId: invoice.sourceInvoiceId,
+    createdAt: invoice.createdAt,
     discountValue: invoice.discountValue,
     discountType: invoice.discountType,
     termsText: invoice.termsText,

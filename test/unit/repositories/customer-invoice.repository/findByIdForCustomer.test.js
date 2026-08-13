@@ -11,12 +11,14 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const scopedItemModel = {};
     const scopedAddressModel = {};
     const scopedTaxModel = {};
+    const scopedCustomerModel = {};
     const customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = customerInvoiceItemModel;
     repository.addressModel = { schema: jest.fn().mockReturnValue(scopedAddressModel) };
     repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue(scopedTaxModel) };
+    repository.customerModel = { schema: jest.fn().mockReturnValue(scopedCustomerModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'c1'),
@@ -25,11 +27,12 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     expect(customerInvoiceItemModel.schema).toHaveBeenCalledWith('tenant_x');
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'i1', customerId: 'c1' },
-      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      attributes: { exclude: ['updatedAt'] },
       include: [
         { model: scopedItemModel, as: 'items' },
         { model: scopedAddressModel, as: 'address' },
         { model: scopedTaxModel, as: 'taxes' },
+        { model: scopedCustomerModel, as: 'Customer' },
       ],
     });
     expect(result).toBe(invoice);
@@ -43,6 +46,7 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
     repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
     repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerModel = { schema: jest.fn().mockReturnValue({}) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'someone-else'),

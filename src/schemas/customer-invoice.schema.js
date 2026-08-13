@@ -29,6 +29,7 @@ const invoiceDataSchema = {
     bookingId: { type: 'string' },
     customerId: { type: 'string' },
     sourceInvoiceId: { type: ['string', 'null'] },
+    createdAt: { type: 'string' },
     discountValue: { type: 'number' },
     discountType: { type: 'string', enum: ['percent', 'flat'] },
     termsText: { type: ['string', 'null'] },
@@ -109,6 +110,16 @@ export const getInvoiceByIdSchema = {
         message: { type: 'string' },
         data: invoiceDetailDataSchema,
       },
+    },
+  },
+};
+
+export const getInvoicePdfSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string' },
     },
   },
 };

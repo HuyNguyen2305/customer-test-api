@@ -45,6 +45,7 @@
     "jsonwebtoken": "^9.0.3",
     "passport": "^0.7.0",
     "passport-custom": "^1.2.0",
+    "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",

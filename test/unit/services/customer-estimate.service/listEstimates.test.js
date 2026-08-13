@@ -33,7 +33,17 @@ describe('CustomerEstimateService.listEstimates', () => {
       statuses: ['sent', 'approved'],
     });
     expect(result).toEqual({
-      estimates: [{ ...estimateRow, statusLabel: 'Open' }],
+      estimates: [
+        {
+          ...estimateRow,
+          statusLabel: 'Open',
+          subtotal: 0,
+          discountAmount: 5,
+          taxableAmount: -5,
+          taxTotal: 0,
+          total: -5,
+        },
+      ],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
   });

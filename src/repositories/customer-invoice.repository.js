@@ -4,11 +4,18 @@ import { BaseRepository } from '#common/base-repository.js';
 const STATUS_ORDER = ['draft', 'sent', 'void', 'write_off', 'paid'];
 
 class CustomerInvoiceRepository extends BaseRepository {
-  constructor({ customerInvoiceModel, customerInvoiceItemModel, addressModel, customerInvoiceTaxModel }) {
+  constructor({
+    customerInvoiceModel,
+    customerInvoiceItemModel,
+    addressModel,
+    customerInvoiceTaxModel,
+    customerModel,
+  }) {
     super(customerInvoiceModel);
     this.customerInvoiceItemModel = customerInvoiceItemModel;
     this.addressModel = addressModel;
     this.customerInvoiceTaxModel = customerInvoiceTaxModel;
+    this.customerModel = customerModel;
   }
 
   findByBookingId(bookingId) {
@@ -57,13 +64,20 @@ class CustomerInvoiceRepository extends BaseRepository {
   findByIdForCustomer(id, customerId) {
     return this.findOne({
       where: { id, customerId },
-      attributes: { exclude: ['createdAt', 'updatedAt'] },
+      attributes: { exclude: ['updatedAt'] },
       include: [
         { model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' },
         { model: this.scopeModel(this.addressModel), as: 'address' },
         { model: this.scopeModel(this.customerInvoiceTaxModel), as: 'taxes' },
+        { model: this.scopeModel(this.customerModel), as: 'Customer' },
       ],
     });
+  }
+
+  sumBalanceDueByCustomerId(customerId) {
+    return this.setSchema()
+      .sum('balanceDue', { where: { customerId } })
+      .then((sum) => sum ?? 0);
   }
 }
 

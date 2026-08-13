@@ -119,6 +119,14 @@ const invoiceA2 = {
   balanceDue: 0,
 };
 
+const invoicePaidA = {
+  id: '11111111-2222-3333-4444-bbbbbbbbbbbb',
+  bookingId: bookingA.id,
+  customerId: customerA.id,
+  status: 'paid',
+  balanceDue: 0,
+};
+
 const invoiceItemA = {
   id: '11111111-2222-3333-4444-888888888888',
   customerInvoiceId: invoiceA.id,
@@ -265,6 +273,7 @@ module.exports = {
   invoiceA,
   invoiceB,
   invoiceA2,
+  invoicePaidA,
   invoiceItemA,
   estimateA,
   estimateB,

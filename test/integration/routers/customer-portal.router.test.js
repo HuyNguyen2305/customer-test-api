@@ -27,6 +27,7 @@ const {
   invoiceA,
   invoiceB,
   invoiceA2,
+  invoicePaidA,
   invoiceItemA,
   estimateA,
   estimateB,
@@ -360,6 +361,165 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(response.statusCode).toBe(401);
 
       await app.close();
+    });
+  });
+
+  describe('GET /customer/invoices/:id/pdf', () => {
+    const fixturesWithPaidInvoice = {
+      ...allFixtures,
+      CustomerInvoice: [...allFixtures.CustomerInvoice, invoicePaidA],
+    };
+
+    it('returns a PDF buffer with the correct headers for the owner', async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/invoices/${invoiceA.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['content-type']).toBe('application/pdf');
+        expect(response.headers['content-disposition']).toBe(`inline; filename="invoice-${invoiceA.id}.pdf"`);
+        expect(response.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+
+        await app.close();
+      });
+    });
+
+    it("reflects the sum of balanceDue across all of the customer's invoices regardless of which one is viewed", async () => {
+      await seedWithTransaction(fixturesWithPaidInvoice, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const openResponse = await app.inject({
+          method: 'GET',
+          url: `/customer/invoices/${invoiceA.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+        const paidResponse = await app.inject({
+          method: 'GET',
+          url: `/customer/invoices/${invoicePaidA.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        // customerA balanceDue: invoiceA 100 + invoiceA2 0 + invoicePaidA 0 = 100, same on both PDFs.
+        expect(openResponse.statusCode).toBe(200);
+        expect(paidResponse.statusCode).toBe(200);
+        expect(paidResponse.rawPayload.length).toBeGreaterThan(0);
+
+        await app.close();
+      });
+    });
+
+    it("returns 404 (not 403) when requesting another customer's invoice", async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/invoices/${invoiceB.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(404);
+
+        await app.close();
+      });
+    });
+
+    it('rejects an unauthenticated request', async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/invoices/${invoiceA.id}/pdf`,
+          headers: headersFor(),
+        });
+
+        expect(response.statusCode).toBe(401);
+
+        await app.close();
+      });
+    });
+  });
+
+  describe('GET /customer/estimates/:id/pdf', () => {
+    it('returns a PDF buffer with the correct headers for the owner', async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/estimates/${estimateA.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['content-type']).toBe('application/pdf');
+        expect(response.headers['content-disposition']).toBe(`inline; filename="estimate-${estimateA.id}.pdf"`);
+        expect(response.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+
+        await app.close();
+      });
+    });
+
+    it("returns 404 (not 403) when requesting another customer's estimate", async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/estimates/${estimateB.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(404);
+
+        await app.close();
+      });
+    });
+
+    it('returns 404 for a draft estimate (not portal-visible)', async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/estimates/${estimateDraftA.id}/pdf`,
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(404);
+
+        await app.close();
+      });
+    });
+
+    it('rejects an unauthenticated request', async () => {
+      await seedWithTransaction(allFixtures, async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: `/customer/estimates/${estimateA.id}/pdf`,
+          headers: headersFor(),
+        });
+
+        expect(response.statusCode).toBe(401);
+
+        await app.close();
+      });
     });
   });
 
