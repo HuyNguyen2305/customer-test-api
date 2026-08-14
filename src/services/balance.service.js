@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { sequelize } from '#common/sequelize.js';
 import { getPaymentGateway } from '#common/factory/payment-gateway/payment-gateway.factory.js';
 import { NotFoundError, BadRequestError } from '#configs/error.js';
 
@@ -14,6 +16,16 @@ class BalanceService {
     return balance;
   }
 
+  // Records the ledger payment + reconciles Balance.amount as one atomic
+  // unit - previously these were three unwrapped calls, so a failure
+  // partway through could leave a ledger entry with no matching balance
+  // update (or vice versa for open_credit's decrement).
+  async recordPaymentAndReconcile({ customerId, amount, transaction }) {
+    await this.ledgerService.recordPayment({ customerId, invoiceId: null, amount }, { transaction });
+    const newBalance = await this.ledgerService.getCustomerBalance(customerId, { transaction });
+    await this.balanceRepository.setAmount(customerId, newBalance, { transaction });
+  }
+
   async payBalance(customerId, paymentMethodId) {
     const balance = await this.getBalance(customerId);
     const amount = Number(balance.amount);
@@ -24,8 +36,20 @@ class BalanceService {
 
     if (paymentMethod.type === 'open_credit') {
       if (Number(paymentMethod.creditBalance) < amount) throw new BadRequestError('Insufficient open credit');
-      await this.customerPaymentMethodRepository.decrementCredit(paymentMethod.id, amount);
+
+      // Pure DB path: the credit decrement joins the same transaction as the
+      // ledger/balance writes below, so all four writes commit or roll back together.
+      await sequelize.transaction(async (transaction) => {
+        await this.customerPaymentMethodRepository.decrementCredit(paymentMethod.id, amount, { transaction });
+        await this.recordPaymentAndReconcile({ customerId, amount, transaction });
+      });
     } else {
+      // The gateway charge is an external network call, so it stays outside
+      // any DB transaction - holding one open across a round-trip would tie
+      // up a pool connection (and any row locks) for no reason. A single
+      // idempotencyKey per attempt protects against the gateway SDK's own
+      // network-level retries double-charging for this one call.
+      const idempotencyKey = randomUUID();
       const gateway = getPaymentGateway(paymentMethod.gateway);
       await gateway.charge({
         amount,
@@ -33,12 +57,13 @@ class BalanceService {
         sourceId: paymentMethod.token,
         customerId: paymentMethod.gatewayCustomerId,
         type: paymentMethod.type,
+        idempotencyKey,
+      });
+
+      await sequelize.transaction(async (transaction) => {
+        await this.recordPaymentAndReconcile({ customerId, amount, transaction });
       });
     }
-
-    await this.ledgerService.recordPayment({ customerId, invoiceId: null, amount });
-    const newBalance = await this.ledgerService.getCustomerBalance(customerId);
-    await this.balanceRepository.setAmount(customerId, newBalance);
 
     return this.getBalance(customerId);
   }

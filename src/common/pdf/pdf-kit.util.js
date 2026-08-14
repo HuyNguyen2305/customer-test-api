@@ -1,11 +1,34 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+
+const FONTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fonts');
+
+// PDFKit's built-in "Helvetica"/"Helvetica-Bold" only cover WinAnsi
+// (roughly Western-European Latin-1) - any other script (Vietnamese,
+// Cyrillic, etc.) or emoji silently renders as the wrong glyphs instead of
+// throwing. Registering a Unicode-capable TTF under those exact standard
+// font names transparently overrides every `.font('Helvetica')` call site
+// in this module and the two builders with zero other code changes, since
+// PDFKit's `.font(name)` checks registered fonts by name before falling
+// back to the built-in standard fonts.
+const REGULAR_FONT_BUFFER = fs.readFileSync(path.join(FONTS_DIR, 'DejaVuSans.ttf'));
+const BOLD_FONT_BUFFER = fs.readFileSync(path.join(FONTS_DIR, 'DejaVuSans-Bold.ttf'));
+
+function registerUnicodeFonts(doc) {
+  doc.registerFont('Helvetica', REGULAR_FONT_BUFFER);
+  doc.registerFont('Helvetica-Bold', BOLD_FONT_BUFFER);
+}
 
 export const PAGE_MARGIN = 50;
 export const PAGE_WIDTH = 612; // Letter
 export const CONTENT_RIGHT = PAGE_WIDTH - PAGE_MARGIN;
 
 export function formatCurrency(value) {
-  return `$${Number(value ?? 0).toFixed(2)}`;
+  const amount = Number(value ?? 0);
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}$${Math.abs(amount).toFixed(2)}`;
 }
 
 // PDFKit's `ellipsis` option only clamps the *last* line of a wrapped block,
@@ -21,12 +44,23 @@ export function formatDate(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+  // UTC getters, not local-time getters: this runs on whatever timezone the
+  // server happens to be deployed in, and a local-time read of a
+  // UTC-midnight timestamp rolls back to the previous calendar day for any
+  // negative UTC offset (all of the Americas) - the date must be
+  // deterministic regardless of server timezone.
+  return `${String(date.getUTCMonth() + 1).padStart(2, '0')}/${String(date.getUTCDate()).padStart(2, '0')}/${date.getUTCFullYear()}`;
 }
 
 export function renderPdfToBuffer(draw) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'LETTER', margin: PAGE_MARGIN });
+    // `font: false` skips PDFDocument's constructor eagerly calling
+    // `.font('Helvetica')` itself - that call caches the built-in standard
+    // font under the name 'Helvetica' before registerUnicodeFonts() below
+    // ever runs, which would otherwise permanently shadow the registered
+    // override for that name.
+    const doc = new PDFDocument({ size: 'LETTER', margin: PAGE_MARGIN, font: false });
+    registerUnicodeFonts(doc);
     const chunks = [];
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -91,11 +125,18 @@ export function drawTable(doc, { startY, columns, rows }) {
       doc.addPage();
       y = PAGE_MARGIN;
     }
+    // A cell's text can wrap to more than one line (long item names/
+    // descriptions), so the row must advance by the tallest cell actually
+    // drawn, not a fixed line height - otherwise a wrapped cell overlaps
+    // whatever is drawn immediately below it (next row, totals block, etc).
+    let rowHeight = 16;
     columns.forEach((col, index) => {
       doc.font(row.boldFirstCell && index === 0 ? 'Helvetica-Bold' : 'Helvetica').fontSize(10);
-      doc.text(row.cells[index] ?? '', col.x, y, { width: col.width, align: col.align ?? 'left' });
+      const cellText = row.cells[index] ?? '';
+      rowHeight = Math.max(rowHeight, doc.heightOfString(cellText, { width: col.width, align: col.align ?? 'left' }));
+      doc.text(cellText, col.x, y, { width: col.width, align: col.align ?? 'left' });
     });
-    y += 16;
+    y += rowHeight;
 
     if (row.subLabel) {
       doc.font('Helvetica').fontSize(9).fillColor('#666666');

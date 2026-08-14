@@ -44,11 +44,12 @@ export const addLineItemSchema = {
   params: invoiceIdParams,
   body: {
     type: 'object',
-    required: ['itemId', 'cost', 'qty'],
+    // cost is intentionally not accepted here - it's always derived
+    // server-side from the referenced Item's own price.
+    required: ['itemId', 'qty'],
     properties: {
       itemId: { type: 'string' },
       description: { type: ['string', 'null'] },
-      cost: { type: 'number' },
       qty: { type: 'integer', minimum: 1 },
       sortOrder: { type: 'integer' },
     },
@@ -69,9 +70,10 @@ export const updateLineItemSchema = {
   params: invoiceAndItemIdParams,
   body: {
     type: 'object',
+    // cost is intentionally not accepted here either - customers can never
+    // change a line item's price after the fact.
     properties: {
       description: { type: ['string', 'null'] },
-      cost: { type: 'number' },
       qty: { type: 'integer', minimum: 1 },
       sortOrder: { type: 'integer' },
     },

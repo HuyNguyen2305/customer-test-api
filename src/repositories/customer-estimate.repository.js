@@ -25,10 +25,22 @@ class CustomerEstimateRepository extends BaseRepository {
       limit,
       offset,
       order: [['createdAt', 'DESC']],
-      attributes: { exclude: ['createdAt', 'updatedAt'] },
-      include: addressId
-        ? [{ model: this.scopeModel(this.bookingModel), attributes: [], where: { addressId }, required: true }]
-        : [],
+      // Only excludes updatedAt, not createdAt: with a hasMany include + limit,
+      // Sequelize wraps this in a subquery, and an ORDER BY that references a
+      // column missing from the subquery's SELECT fails outright. toEstimateData
+      // already whitelists response fields, so createdAt never reaches the API
+      // even though it stays in the query (same fix as the invoice repository).
+      attributes: { exclude: ['updatedAt'] },
+      include: [
+        {
+          model: this.scopeModel(this.customerEstimateItemModel),
+          as: 'items',
+          include: [{ model: this.scopeModel(this.taxRateModel) }],
+        },
+        ...(addressId
+          ? [{ model: this.scopeModel(this.bookingModel), attributes: [], where: { addressId }, required: true }]
+          : []),
+      ],
     });
   }
 

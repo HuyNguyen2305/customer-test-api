@@ -20,9 +20,23 @@ export class FakePDFDocument {
     return this;
   }
 
+  registerFont() {
+    return this;
+  }
+
   text(str) {
     this.textCalls.push(str);
     return this;
+  }
+
+  // Rough approximation of PDFKit's real wrapping math - just enough that
+  // builder code computing row heights from wrapped text gets a plausible,
+  // width-sensitive number back instead of throwing.
+  heightOfString(str, options = {}) {
+    const width = options.width || 500;
+    const charsPerLine = Math.max(1, Math.floor(width / 6));
+    const lines = Math.max(1, Math.ceil((str || '').length / charsPerLine));
+    return lines * 12;
   }
 
   moveTo(...args) {

@@ -19,7 +19,9 @@ describe('CustomerInvoiceItemController.addItem', () => {
     const reply = { send: jest.fn() };
     const request = {
       params: { invoiceId: 'i1' },
-      body: { itemId: 'item1', description: 'Treatment', cost: 100, qty: 1, sortOrder: 0 },
+      // A client-supplied cost must never reach the service - the controller
+      // only forwards itemId/description/qty/sortOrder.
+      body: { itemId: 'item1', description: 'Treatment', cost: 999999, qty: 1, sortOrder: 0 },
     };
 
     await controller.addItem(request, reply);
@@ -27,7 +29,6 @@ describe('CustomerInvoiceItemController.addItem', () => {
     expect(controller.customerInvoiceItemService.addItem).toHaveBeenCalledWith('c1', 'i1', {
       itemId: 'item1',
       description: 'Treatment',
-      cost: 100,
       qty: 1,
       sortOrder: 0,
     });

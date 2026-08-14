@@ -105,8 +105,8 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
     );
   });
 
-  it('attaches one CustomerInvoiceTax row per distinct taxRateId referenced by the items', async () => {
-    const created = { id: 'inv1' };
+  it('attaches one CustomerInvoiceTax row per distinct taxRateId referenced by the items, each scoped to just its own items', async () => {
+    const created = { id: 'inv1', discountValue: 0, discountType: 'flat' };
     const service = buildService({ created });
     service.taxRateRepository.findByPk = jest.fn(async (id) => ({
       id,
@@ -132,12 +132,48 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
 
     expect(service.taxRateRepository.findByPk).toHaveBeenCalledTimes(2);
     expect(service.customerInvoiceTaxRepository.createTax).toHaveBeenCalledTimes(2);
+    // tax1 covers items 1+2 (10+20=30), tax2 covers item 3 (30) - item 4 (no
+    // rate) and no discount, so each row's base is just its own items' sum.
     expect(service.customerInvoiceTaxRepository.createTax).toHaveBeenCalledWith(
-      expect.objectContaining({ customerInvoiceId: 'inv1', taxRateId: 'tax1' }),
+      expect.objectContaining({ customerInvoiceId: 'inv1', taxRateId: 'tax1', taxableBase: 30 }),
       expect.anything(),
     );
     expect(service.customerInvoiceTaxRepository.createTax).toHaveBeenCalledWith(
-      expect.objectContaining({ customerInvoiceId: 'inv1', taxRateId: 'tax2' }),
+      expect.objectContaining({ customerInvoiceId: 'inv1', taxRateId: 'tax2', taxableBase: 30 }),
+      expect.anything(),
+    );
+  });
+
+  it('reduces each tax row taxableBase proportionally when the invoice carries a discount', async () => {
+    const created = { id: 'inv1', discountValue: 20, discountType: 'flat' };
+    const service = buildService({ created });
+    service.taxRateRepository.findByPk = jest.fn(async (id) => ({
+      id,
+      name: `Tax ${id}`,
+      code: id,
+      rate: 5,
+      type: 'sales',
+    }));
+    const estimate = {
+      id: 'e1',
+      bookingId: 'b1',
+      customerId: 'c1',
+      status: 'sent',
+      items: [
+        { itemId: 'item1', description: 'A', cost: 30, taxRateId: 'tax1', qty: 1, sortOrder: 0 },
+        { itemId: 'item2', description: 'B', cost: 70, taxRateId: 'tax2', qty: 1, sortOrder: 1 },
+      ],
+    };
+
+    await service.generateInvoiceFromEstimate(estimate, 'c1');
+
+    // subtotal 100, discount 20 -> discountRatio 0.2 -> tax1 base 30*0.8=24, tax2 base 70*0.8=56
+    expect(service.customerInvoiceTaxRepository.createTax).toHaveBeenCalledWith(
+      expect.objectContaining({ taxRateId: 'tax1', taxableBase: 24 }),
+      expect.anything(),
+    );
+    expect(service.customerInvoiceTaxRepository.createTax).toHaveBeenCalledWith(
+      expect.objectContaining({ taxRateId: 'tax2', taxableBase: 56 }),
       expect.anything(),
     );
   });

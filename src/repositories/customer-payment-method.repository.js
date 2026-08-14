@@ -19,8 +19,8 @@ class CustomerPaymentMethodRepository extends BaseRepository {
     return this.findOne({ where: { id, customerId } });
   }
 
-  decrementCredit(id, amount) {
-    return sequelize.transaction(async (transaction) => {
+  decrementCredit(id, amount, options = {}) {
+    const run = async (transaction) => {
       const scoped = this.setSchema();
       const paymentMethod = await scoped.findByPk(id, { transaction });
       if (!paymentMethod) return null;
@@ -28,7 +28,9 @@ class CustomerPaymentMethodRepository extends BaseRepository {
       const newBalance = Number(paymentMethod.creditBalance) - amount;
       await scoped.update({ creditBalance: newBalance }, { where: { id }, transaction });
       return scoped.findByPk(id, { transaction });
-    });
+    };
+
+    return options.transaction ? run(options.transaction) : sequelize.transaction(run);
   }
 
   upsertOpenCredit(customerId, amount) {

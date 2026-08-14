@@ -17,10 +17,15 @@ function computeEstimateTotals(estimate) {
       ? Number(estimate.discountValue)
       : subtotal * (Number(estimate.discountValue) / 100);
   const taxableAmount = subtotal - discountAmount;
-  const taxTotal = items.reduce(
-    (sum, item) => sum + Number(item.cost) * item.qty * (Number(item.TaxRate?.rate ?? 0) / 100),
-    0,
-  );
+  // Tax each item on its own share of the taxable (post-discount) amount,
+  // not its raw pre-discount cost — mirrors the taxableBase logic in
+  // invoice-generation.service.js's attachEstimateTaxes, so a converted
+  // invoice's tax matches what the customer saw on the estimate.
+  const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+  const taxTotal = items.reduce((sum, item) => {
+    const itemTaxableBase = Number(item.cost) * item.qty * (1 - discountRatio);
+    return sum + itemTaxableBase * (Number(item.TaxRate?.rate ?? 0) / 100);
+  }, 0);
 
   return {
     subtotal,

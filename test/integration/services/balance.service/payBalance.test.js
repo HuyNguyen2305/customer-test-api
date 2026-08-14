@@ -67,6 +67,7 @@ describe('BalanceService.payBalance (integration)', () => {
           sourceId: customerPaymentMethodFixtures.squareCard.token,
           customerId: customerPaymentMethodFixtures.squareCard.gatewayCustomerId,
           type: customerPaymentMethodFixtures.squareCard.type,
+          idempotencyKey: expect.any(String),
         });
         expect(Number(result.amount)).toBe(0);
 
@@ -100,6 +101,47 @@ describe('BalanceService.payBalance (integration)', () => {
 
         expect(chargeMock).not.toHaveBeenCalled();
         expect(Number(result.amount)).toBe(0);
+      },
+    );
+  });
+
+  it('rolls back the credit decrement when a later write in the same transaction fails', async () => {
+    await seedWithTransaction(
+      {
+        Customer: [{ id: balanceFixtures.balanceWithAmount.customerId }],
+        Balance: [balanceFixtures.balanceWithAmount],
+        CustomerPaymentMethod: [customerPaymentMethodFixtures.openCredit],
+        CustomerLedgerEntry: [
+          {
+            customerId: balanceFixtures.balanceWithAmount.customerId,
+            type: 'charge',
+            amount: balanceFixtures.balanceWithAmount.amount,
+          },
+        ],
+      },
+      async ({ seeded }) => {
+        const service = buildService();
+        const paymentMethodId = seeded.CustomerPaymentMethod[0].id;
+        const originalCreditBalance = Number(seeded.CustomerPaymentMethod[0].creditBalance);
+
+        // Force the ledger write inside the transaction to fail, after
+        // decrementCredit has already run - proves the credit decrement
+        // rolls back with it instead of committing independently.
+        const recordPaymentSpy = jest
+          .spyOn(service.ledgerService, 'recordPayment')
+          .mockRejectedValueOnce(new Error('simulated ledger failure'));
+
+        await expect(service.payBalance(balanceFixtures.balanceWithAmount.customerId, paymentMethodId)).rejects.toThrow(
+          'simulated ledger failure',
+        );
+
+        recordPaymentSpy.mockRestore();
+
+        const paymentMethodAfter = await service.customerPaymentMethodRepository.getPaymentMethodById(
+          paymentMethodId,
+          balanceFixtures.balanceWithAmount.customerId,
+        );
+        expect(Number(paymentMethodAfter.creditBalance)).toBe(originalCreditBalance);
       },
     );
   });

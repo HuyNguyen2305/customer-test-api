@@ -95,4 +95,18 @@ describe('SquareGateway', () => {
       }),
     );
   });
+
+  it('charge uses a passed-in idempotencyKey instead of generating its own', async () => {
+    const gateway = new SquareGateway();
+
+    await gateway.charge({
+      amount: 12.5,
+      currency: 'USD',
+      sourceId: 'sq_card_1',
+      customerId: 'sq_cust_1',
+      idempotencyKey: 'idem-key-1',
+    });
+
+    expect(paymentsCreateMock).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'idem-key-1' }));
+  });
 });

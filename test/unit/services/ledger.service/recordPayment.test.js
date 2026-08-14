@@ -9,11 +9,14 @@ describe('LedgerService.recordPayment', () => {
 
     await service.recordPayment({ customerId: 'c1', invoiceId: 'inv1', amount: 75 });
 
-    expect(service.customerLedgerEntryRepository.createEntry).toHaveBeenCalledWith({
-      customerId: 'c1',
-      type: 'payment',
-      amount: 75,
-      referenceId: 'inv1',
-    });
+    expect(service.customerLedgerEntryRepository.createEntry).toHaveBeenCalledWith(
+      {
+        customerId: 'c1',
+        type: 'payment',
+        amount: 75,
+        referenceId: 'inv1',
+      },
+      {},
+    );
   });
 });

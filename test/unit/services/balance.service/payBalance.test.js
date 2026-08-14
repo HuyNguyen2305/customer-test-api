@@ -2,9 +2,18 @@ import { jest } from '@jest/globals';
 
 const chargeMock = jest.fn();
 const getPaymentGatewayMock = jest.fn(() => ({ charge: chargeMock }));
+const FAKE_TRANSACTION = { id: 'fake-transaction' };
+const transactionMock = jest.fn((fn) => fn(FAKE_TRANSACTION));
 
 jest.unstable_mockModule('#common/factory/payment-gateway/payment-gateway.factory.js', () => ({
   getPaymentGateway: getPaymentGatewayMock,
+}));
+
+// payBalance() now wraps its post-charge DB writes in sequelize.transaction() -
+// this test builds the service with plain mocked repos/no real DB, so the
+// transaction runner itself must be stubbed to just invoke its callback.
+jest.unstable_mockModule('#common/sequelize.js', () => ({
+  sequelize: { transaction: transactionMock },
 }));
 
 const { default: BalanceService } = await import('#service/balance.service.js');
@@ -31,6 +40,7 @@ describe('BalanceService.payBalance', () => {
   beforeEach(() => {
     chargeMock.mockReset().mockResolvedValue({ success: true });
     getPaymentGatewayMock.mockClear();
+    transactionMock.mockClear();
   });
 
   it('charges a Square card, records a ledger payment, and reconciles the balance', async () => {
@@ -56,13 +66,17 @@ describe('BalanceService.payBalance', () => {
       sourceId: 'sq_card_1',
       customerId: 'sq_cust_1',
       type: 'card',
+      idempotencyKey: expect.any(String),
     });
-    expect(service.ledgerService.recordPayment).toHaveBeenCalledWith({
-      customerId: 'c1',
-      invoiceId: null,
-      amount: 100,
-    });
-    expect(service.balanceRepository.setAmount).toHaveBeenCalledWith('c1', 0);
+    expect(service.ledgerService.recordPayment).toHaveBeenCalledWith(
+      {
+        customerId: 'c1',
+        invoiceId: null,
+        amount: 100,
+      },
+      { transaction: FAKE_TRANSACTION },
+    );
+    expect(service.balanceRepository.setAmount).toHaveBeenCalledWith('c1', 0, { transaction: FAKE_TRANSACTION });
     expect(result).toBe(paidOffBalance);
   });
 
@@ -86,6 +100,7 @@ describe('BalanceService.payBalance', () => {
       sourceId: 'pm_stripe_1',
       customerId: 'cus_stripe_1',
       type: 'card',
+      idempotencyKey: expect.any(String),
     });
   });
 
@@ -108,6 +123,7 @@ describe('BalanceService.payBalance', () => {
       sourceId: 'pm_bank_1',
       customerId: 'cus_stripe_1',
       type: 'bank',
+      idempotencyKey: expect.any(String),
     });
   });
 
@@ -120,8 +136,13 @@ describe('BalanceService.payBalance', () => {
 
     expect(getPaymentGatewayMock).not.toHaveBeenCalled();
     expect(chargeMock).not.toHaveBeenCalled();
-    expect(service.customerPaymentMethodRepository.decrementCredit).toHaveBeenCalledWith('pm3', 30);
-    expect(service.ledgerService.recordPayment).toHaveBeenCalledWith({ customerId: 'c1', invoiceId: null, amount: 30 });
+    expect(service.customerPaymentMethodRepository.decrementCredit).toHaveBeenCalledWith('pm3', 30, {
+      transaction: FAKE_TRANSACTION,
+    });
+    expect(service.ledgerService.recordPayment).toHaveBeenCalledWith(
+      { customerId: 'c1', invoiceId: null, amount: 30 },
+      { transaction: FAKE_TRANSACTION },
+    );
   });
 
   it('throws BadRequestError when open credit is insufficient', async () => {
@@ -161,6 +182,30 @@ describe('BalanceService.payBalance', () => {
 
     await expect(service.payBalance('c1', 'pm1')).rejects.toThrow('card declined');
     expect(service.ledgerService.recordPayment).not.toHaveBeenCalled();
+    expect(service.balanceRepository.setAmount).not.toHaveBeenCalled();
+  });
+
+  it('generates a fresh idempotency key per attempt rather than reusing one across calls', async () => {
+    const paymentMethod = { id: 'pm1', type: 'card', gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' };
+    const service = buildService({ balance: { customerId: 'c1', amount: 50, currency: 'USD' }, paymentMethod });
+
+    await service.payBalance('c1', 'pm1');
+    await service.payBalance('c1', 'pm1');
+
+    const [firstCall, secondCall] = chargeMock.mock.calls;
+    expect(firstCall[0].idempotencyKey).toEqual(expect.any(String));
+    expect(secondCall[0].idempotencyKey).toEqual(expect.any(String));
+    expect(firstCall[0].idempotencyKey).not.toBe(secondCall[0].idempotencyKey);
+  });
+
+  it('propagates an error thrown inside the post-charge transaction instead of swallowing it', async () => {
+    const service = buildService({
+      balance: { customerId: 'c1', amount: 50, currency: 'USD' },
+      paymentMethod: { id: 'pm1', type: 'card', gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+    });
+    service.ledgerService.recordPayment.mockRejectedValueOnce(new Error('ledger write failed'));
+
+    await expect(service.payBalance('c1', 'pm1')).rejects.toThrow('ledger write failed');
     expect(service.balanceRepository.setAmount).not.toHaveBeenCalled();
   });
 });

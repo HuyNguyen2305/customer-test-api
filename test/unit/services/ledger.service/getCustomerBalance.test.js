@@ -9,7 +9,7 @@ describe('LedgerService.getCustomerBalance', () => {
 
     const result = await service.getCustomerBalance('c1');
 
-    expect(service.customerLedgerEntryRepository.getBalanceByCustomer).toHaveBeenCalledWith('c1');
+    expect(service.customerLedgerEntryRepository.getBalanceByCustomer).toHaveBeenCalledWith('c1', {});
     expect(service.customerLedgerEntryRepository.getBalanceByCustomer).toHaveBeenCalledTimes(1);
     expect(result).toBe(180);
   });

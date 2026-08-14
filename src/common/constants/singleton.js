@@ -22,6 +22,7 @@ export const REPOSITORY_KEYS = {
   TAX_RATE_REPOSITORY: 'taxRateRepository',
   INVOICE_ITEM_REPOSITORY: 'invoiceItemRepository',
   CUSTOMER_INVOICE_ITEM_REPOSITORY: 'customerInvoiceItemRepository',
+  ITEM_REPOSITORY: 'itemRepository',
   CUSTOMER_INVOICE_TAX_REPOSITORY: 'customerInvoiceTaxRepository',
 };
 

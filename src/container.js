@@ -28,6 +28,7 @@ import TaxRateRepository from '#repositories/tax-rate.repository.js';
 import InvoiceItemRepository from '#repositories/invoice-item.repository.js';
 import CustomerInvoiceItemRepository from '#repositories/customer-invoice-item.repository.js';
 import CustomerInvoiceTaxRepository from '#repositories/customer-invoice-tax.repository.js';
+import ItemRepository from '#repositories/item.repository.js';
 
 import AuthService from '#service/auth.service.js';
 import BalanceService from '#service/balance.service.js';
@@ -117,6 +118,7 @@ container.register({
   [REPOSITORY_KEYS.TAX_RATE_REPOSITORY]: asClass(TaxRateRepository).scoped(),
   [REPOSITORY_KEYS.INVOICE_ITEM_REPOSITORY]: asClass(InvoiceItemRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_INVOICE_ITEM_REPOSITORY]: asClass(CustomerInvoiceItemRepository).scoped(),
+  [REPOSITORY_KEYS.ITEM_REPOSITORY]: asClass(ItemRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_INVOICE_TAX_REPOSITORY]: asClass(CustomerInvoiceTaxRepository).scoped(),
 
   [SERVICE_KEYS.AUTH_SERVICE]: asClass(AuthService).scoped(),

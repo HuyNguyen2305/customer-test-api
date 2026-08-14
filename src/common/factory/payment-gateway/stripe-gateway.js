@@ -23,16 +23,19 @@ export class StripeGateway {
     return paymentMethod.id;
   }
 
-  async charge({ amount, currency, sourceId, customerId, type = 'card' }) {
-    return this.client.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency,
-      customer: customerId,
-      payment_method: sourceId,
-      payment_method_types: [type === 'bank' ? 'us_bank_account' : 'card'],
-      confirm: true,
-      off_session: true,
-    });
+  async charge({ amount, currency, sourceId, customerId, type = 'card', idempotencyKey }) {
+    return this.client.paymentIntents.create(
+      {
+        amount: Math.round(amount * 100),
+        currency,
+        customer: customerId,
+        payment_method: sourceId,
+        payment_method_types: [type === 'bank' ? 'us_bank_account' : 'card'],
+        confirm: true,
+        off_session: true,
+      },
+      idempotencyKey ? { idempotencyKey } : undefined,
+    );
   }
 }
 

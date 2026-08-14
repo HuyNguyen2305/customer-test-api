@@ -78,4 +78,47 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
 
     expect(result.statusLabel).toBeNull();
   });
+
+  it('computes each tax row amount from its own stored taxableBase, not the whole invoice taxableAmount', async () => {
+    const invoiceWithTaxes = {
+      ...baseInvoice,
+      discountValue: 0,
+      discountType: 'flat',
+      items: [
+        { id: 'ii1', itemId: 'item1', description: 'A', cost: 30, qty: 1, sortOrder: 0 },
+        { id: 'ii2', itemId: 'item2', description: 'B', cost: 70, qty: 1, sortOrder: 1 },
+      ],
+      taxes: [
+        { id: 't1', name: 'Tax A', code: 'A', rate: 5, type: 'sales', taxableBase: 30 },
+        { id: 't2', name: 'Tax B', code: 'B', rate: 10, type: 'sales', taxableBase: 70 },
+      ],
+    };
+    const service = Object.create(CustomerInvoiceService.prototype);
+    service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(invoiceWithTaxes) };
+
+    const result = await service.getInvoiceById('i1', 'c1');
+
+    // Not 100 (whole taxableAmount) * each rate - each tax only covers its own base.
+    expect(result.taxes[0].amount).toBe(1.5); // 30 * 5%
+    expect(result.taxes[1].amount).toBe(7); // 70 * 10%
+    expect(result.taxTotal).toBe(8.5);
+    expect(result.total).toBe(108.5);
+  });
+
+  it('falls back to the whole invoice taxableAmount when a tax row has no stored taxableBase', async () => {
+    const invoiceWithSingleTax = {
+      ...baseInvoice,
+      discountValue: 0,
+      discountType: 'flat',
+      items: [{ id: 'ii1', itemId: 'item1', description: 'A', cost: 100, qty: 1, sortOrder: 0 }],
+      taxes: [{ id: 't1', name: 'State Tax', code: 'ST', rate: 8, type: 'sales', taxableBase: null }],
+    };
+    const service = Object.create(CustomerInvoiceService.prototype);
+    service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(invoiceWithSingleTax) };
+
+    const result = await service.getInvoiceById('i1', 'c1');
+
+    expect(result.taxes[0].amount).toBe(8); // 100 (whole taxableAmount) * 8%
+    expect(result.taxTotal).toBe(8);
+  });
 });

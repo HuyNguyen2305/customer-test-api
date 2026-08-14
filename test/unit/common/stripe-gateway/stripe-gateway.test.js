@@ -55,15 +55,18 @@ describe('StripeGateway', () => {
 
     await gateway.charge({ amount: 12.5, currency: 'usd', sourceId: 'pm_1', customerId: 'cus_1' });
 
-    expect(paymentIntentsCreateMock).toHaveBeenCalledWith({
-      amount: 1250,
-      currency: 'usd',
-      customer: 'cus_1',
-      payment_method: 'pm_1',
-      payment_method_types: ['card'],
-      confirm: true,
-      off_session: true,
-    });
+    expect(paymentIntentsCreateMock).toHaveBeenCalledWith(
+      {
+        amount: 1250,
+        currency: 'usd',
+        customer: 'cus_1',
+        payment_method: 'pm_1',
+        payment_method_types: ['card'],
+        confirm: true,
+        off_session: true,
+      },
+      undefined,
+    );
   });
 
   it('charge uses us_bank_account payment_method_types when type is bank', async () => {
@@ -73,6 +76,21 @@ describe('StripeGateway', () => {
 
     expect(paymentIntentsCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({ payment_method_types: ['us_bank_account'] }),
+      undefined,
     );
+  });
+
+  it('charge passes idempotencyKey through to Stripe as request options when provided', async () => {
+    const gateway = new StripeGateway();
+
+    await gateway.charge({
+      amount: 12.5,
+      currency: 'usd',
+      sourceId: 'pm_1',
+      customerId: 'cus_1',
+      idempotencyKey: 'idem-key-1',
+    });
+
+    expect(paymentIntentsCreateMock).toHaveBeenCalledWith(expect.any(Object), { idempotencyKey: 'idem-key-1' });
   });
 });

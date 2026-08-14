@@ -13,11 +13,10 @@ class CustomerInvoiceItemController {
 
   async addItem(request, reply) {
     const customerId = requireCustomerId();
-    const { itemId, description, cost, qty, sortOrder } = request.body;
+    const { itemId, description, qty, sortOrder } = request.body;
     const data = await this.customerInvoiceItemService.addItem(customerId, request.params.invoiceId, {
       itemId,
       description,
-      cost,
       qty,
       sortOrder,
     });
@@ -26,11 +25,16 @@ class CustomerInvoiceItemController {
 
   async updateItem(request, reply) {
     const customerId = requireCustomerId();
+    // Explicit whitelist, not the raw request.body: this app has no
+    // additionalProperties:false/removeAdditional AJV config, so forwarding
+    // the whole body would let a client smuggle a cost field straight
+    // through to the repository despite the schema not declaring it.
+    const { description, qty, sortOrder } = request.body;
     const data = await this.customerInvoiceItemService.updateItem(
       customerId,
       request.params.invoiceId,
       request.params.itemId,
-      request.body,
+      { description, qty, sortOrder },
     );
     reply.send({ success: true, message: 'Line item updated', data });
   }

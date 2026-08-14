@@ -87,4 +87,34 @@ describe('CustomerEstimateService.getEstimateById', () => {
 
     await expect(service.getEstimateById('e1', 'c1')).rejects.toThrow(NotFoundError);
   });
+
+  it('taxes each item on its discounted (taxable) share, not its raw pre-discount cost', async () => {
+    const estimateWithDiscountedTax = {
+      ...baseEstimate,
+      discountValue: 50,
+      discountType: 'flat',
+      items: [
+        {
+          id: 'ei1',
+          itemId: 'item1',
+          description: 'A',
+          cost: 200,
+          taxRateId: 'tax1',
+          qty: 1,
+          sortOrder: 0,
+          TaxRate: { rate: 8 },
+        },
+      ],
+    };
+    const service = Object.create(CustomerEstimateService.prototype);
+    service.customerEstimateRepository = {
+      findByIdForCustomer: jest.fn().mockResolvedValue(estimateWithDiscountedTax),
+    };
+
+    const result = await service.getEstimateById('e1', 'c1');
+
+    expect(result.taxableAmount).toBe(150);
+    expect(result.taxTotal).toBe(12); // 150 * 8%, not 200 * 8% = 16
+    expect(result.total).toBe(162);
+  });
 });

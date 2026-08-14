@@ -13,9 +13,9 @@ import {
 } from '#common/pdf/pdf-kit.util.js';
 
 const BILL_TO_TOP = 130;
-const SERVICE_ADDRESS_X = 310;
-const SERVICE_ADDRESS_WIDTH = 110;
-const INFO_BOX_X = 430;
+const SERVICE_ADDRESS_X = 295;
+const SERVICE_ADDRESS_WIDTH = 105;
+const INFO_BOX_X = 405;
 const INFO_BOX_WIDTH = CONTENT_RIGHT - INFO_BOX_X;
 const ITEMS_TOP = 235;
 
@@ -34,9 +34,10 @@ function drawBillTo(doc, estimateData, customer, address) {
 
   doc.font('Helvetica-Bold').fontSize(10).fillColor('black');
   doc.text('Service Address', SERVICE_ADDRESS_X, BILL_TO_TOP, { width: SERVICE_ADDRESS_WIDTH });
+  const labelBottom = doc.y;
 
   doc.font('Helvetica').fontSize(10);
-  drawAddressLines(doc, SERVICE_ADDRESS_X, BILL_TO_TOP + 16, { ...addressLines, width: SERVICE_ADDRESS_WIDTH });
+  drawAddressLines(doc, SERVICE_ADDRESS_X, labelBottom + 2, { ...addressLines, width: SERVICE_ADDRESS_WIDTH });
 }
 
 function drawEstimateInfoBox(doc, estimateData) {
@@ -44,10 +45,11 @@ function drawEstimateInfoBox(doc, estimateData) {
     .rect(INFO_BOX_X, BILL_TO_TOP - 3, INFO_BOX_WIDTH, 66)
     .strokeColor('#cccccc')
     .stroke();
+  const labelWidth = 78;
   drawKeyValueList(doc, {
     x: INFO_BOX_X + 6,
-    labelWidth: 65,
-    valueWidth: INFO_BOX_WIDTH - 12 - 65,
+    labelWidth,
+    valueWidth: INFO_BOX_WIDTH - 12 - labelWidth,
     startY: BILL_TO_TOP,
     rows: [
       ['Estimate #', truncateId(estimateData.id), true],
@@ -58,10 +60,10 @@ function drawEstimateInfoBox(doc, estimateData) {
 }
 
 const ITEM_COLUMNS = [
-  { label: 'Item', x: PAGE_MARGIN, width: 260 },
-  { label: 'Cost', x: 350, width: 60, align: 'right' },
-  { label: 'Quantity', x: 430, width: 60, align: 'right' },
-  { label: 'Total', x: 500, width: 62, align: 'right' },
+  { label: 'Item', x: PAGE_MARGIN, width: 300 },
+  { label: 'Cost', x: 362, width: 70, align: 'right' },
+  { label: 'Quantity', x: 442, width: 40, align: 'right' },
+  { label: 'Total', x: 492, width: 70, align: 'right' },
 ];
 
 function buildItemRows(items) {

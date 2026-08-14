@@ -309,6 +309,57 @@ describe('Customer portal GET endpoints (integration)', () => {
     });
   });
 
+  it('POST /customer/invoices/:invoiceId/items ignores a client-supplied cost and uses the Item catalog price', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/customer/invoices/${invoiceA2.id}/items`,
+        headers: headersFor(customerA.id),
+        payload: { itemId: item1.id, description: 'Malicious credit', cost: -9999, qty: 1 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(Number(body.data.cost)).toBe(item1.defaultCost);
+
+      await app.close();
+    });
+  });
+
+  it('PATCH /customer/invoices/:invoiceId/items/:itemId leaves cost unchanged even if the client sends one', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      // Seed a fresh item directly on the draft invoice via the real create
+      // endpoint first, then try to alter its price via update.
+      const created = await app.inject({
+        method: 'POST',
+        url: `/customer/invoices/${invoiceA2.id}/items`,
+        headers: headersFor(customerA.id),
+        payload: { itemId: item1.id, qty: 1 },
+      });
+      const itemId = created.json().data.id;
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/customer/invoices/${invoiceA2.id}/items/${itemId}`,
+        headers: headersFor(customerA.id),
+        payload: { qty: 5, cost: -500 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.qty).toBe(5);
+      expect(Number(body.data.cost)).toBe(item1.defaultCost);
+
+      await app.close();
+    });
+  });
+
   it('GET /customer/invoices/:id returns the invoice with its line items for the owner', async () => {
     await seedWithTransaction(allFixtures, async () => {
       const app = await buildApp();
@@ -596,6 +647,15 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(ids).toContain(estimateApprovedA2.id);
       expect(ids).not.toContain(estimateDraftA.id);
       expect(body.data.find((estimate) => estimate.id === estimateApprovedA2.id).statusLabel).toBe('Accepted');
+
+      // Regression coverage: the list endpoint's repository query used to omit
+      // items and createdAt entirely, so every estimate silently showed a $0
+      // (or negative, with a discount) total and an undefined createdAt here,
+      // even though the single-estimate detail endpoint computed them correctly.
+      const estimateARow = body.data.find((estimate) => estimate.id === estimateA.id);
+      expect(estimateARow.subtotal).toBe(estimateItemA.cost * estimateItemA.qty);
+      expect(estimateARow.total).toBe(estimateItemA.cost * estimateItemA.qty);
+      expect(estimateARow.createdAt).toEqual(expect.any(String));
 
       await app.close();
     });

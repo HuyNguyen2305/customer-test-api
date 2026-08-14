@@ -37,11 +37,11 @@ export class SquareGateway {
     return response.bankAccount.id;
   }
 
-  async charge({ amount, currency, sourceId, customerId, locationId }) {
+  async charge({ amount, currency, sourceId, customerId, locationId, idempotencyKey }) {
     return this.client.payments.create({
       sourceId,
       customerId,
-      idempotencyKey: randomUUID(),
+      idempotencyKey: idempotencyKey ?? randomUUID(),
       locationId: locationId ?? process.env.SQUARE_LOCATION_ID,
       amountMoney: {
         amount: BigInt(Math.round(amount * 100)),

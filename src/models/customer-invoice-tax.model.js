@@ -32,6 +32,10 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      taxableBase: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+      },
     },
     {
       tableName: 'customer_invoice_taxes',

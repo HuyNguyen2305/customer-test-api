@@ -17,14 +17,22 @@ function computeTotals(invoice) {
     invoice.discountType === 'flat' ? Number(invoice.discountValue) : subtotal * (Number(invoice.discountValue) / 100);
   const taxableAmount = subtotal - discountAmount;
 
-  const taxBreakdown = taxes.map((tax) => ({
-    id: tax.id,
-    name: tax.name,
-    code: tax.code,
-    rate: tax.rate,
-    type: tax.type,
-    amount: taxableAmount * (Number(tax.rate) / 100),
-  }));
+  // A stored taxableBase (set by attachEstimateTaxes for estimate-sourced
+  // invoices with per-item tax rates) means this rate only applied to a
+  // subset of items; fall back to the invoice-wide taxableAmount when
+  // absent — that's attachAutoTax's single-rate path, where "apply the rate
+  // to the whole taxable amount" is already correct.
+  const taxBreakdown = taxes.map((tax) => {
+    const base = tax.taxableBase != null ? Number(tax.taxableBase) : taxableAmount;
+    return {
+      id: tax.id,
+      name: tax.name,
+      code: tax.code,
+      rate: tax.rate,
+      type: tax.type,
+      amount: base * (Number(tax.rate) / 100),
+    };
+  });
   const taxTotal = taxBreakdown.reduce((sum, tax) => sum + tax.amount, 0);
 
   return {

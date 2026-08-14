@@ -21,6 +21,10 @@ let schemaReadyPromise = null;
 
 function ensureSchema() {
   if (!schemaReadyPromise) {
+    // If the setup itself fails (e.g. a cold DB/connection pool timing out
+    // on the first query of a run), reset the cache instead of leaving a
+    // rejected promise in place - otherwise every later test in this file
+    // would reuse that same rejection forever instead of retrying.
     schemaReadyPromise = (async () => {
       // Drop and recreate rather than incrementally ALTER: this always
       // matches the current models exactly (no risk of the shared schema
@@ -49,7 +53,10 @@ function ensureSchema() {
         if (stillPending.length === pending.length) throw lastError;
         pending = stillPending;
       }
-    })();
+    })().catch((error) => {
+      schemaReadyPromise = null;
+      throw error;
+    });
   }
 
   return schemaReadyPromise;

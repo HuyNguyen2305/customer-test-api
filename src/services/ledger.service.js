@@ -12,17 +12,20 @@ class LedgerService {
     });
   }
 
-  recordPayment({ customerId, invoiceId, amount }) {
-    return this.customerLedgerEntryRepository.createEntry({
-      customerId,
-      type: 'payment',
-      amount,
-      referenceId: invoiceId,
-    });
+  recordPayment({ customerId, invoiceId, amount }, options = {}) {
+    return this.customerLedgerEntryRepository.createEntry(
+      {
+        customerId,
+        type: 'payment',
+        amount,
+        referenceId: invoiceId,
+      },
+      options,
+    );
   }
 
-  getCustomerBalance(customerId) {
-    return this.customerLedgerEntryRepository.getBalanceByCustomer(customerId);
+  getCustomerBalance(customerId, options = {}) {
+    return this.customerLedgerEntryRepository.getBalanceByCustomer(customerId, options);
   }
 
   async listLedger(customerId, { page = 1, pageSize = 20 } = {}) {

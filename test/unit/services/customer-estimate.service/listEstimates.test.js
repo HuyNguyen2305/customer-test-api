@@ -15,6 +15,10 @@ const estimateRow = {
   termsText: null,
   notesText: null,
   status: 'sent',
+  // The repository's listByCustomerId now includes items (fixed alongside
+  // the missing-items bug that made list-view totals always show $0) - this
+  // mock reflects that real shape instead of omitting items.
+  items: [{ id: 'ei1', itemId: 'item1', description: 'A', cost: 100, qty: 1, sortOrder: 0 }],
 };
 
 describe('CustomerEstimateService.listEstimates', () => {
@@ -36,12 +40,24 @@ describe('CustomerEstimateService.listEstimates', () => {
       estimates: [
         {
           ...estimateRow,
+          items: [
+            {
+              id: 'ei1',
+              itemId: 'item1',
+              itemName: null,
+              description: 'A',
+              cost: 100,
+              taxRateId: undefined,
+              qty: 1,
+              sortOrder: 0,
+            },
+          ],
           statusLabel: 'Open',
-          subtotal: 0,
+          subtotal: 100,
           discountAmount: 5,
-          taxableAmount: -5,
+          taxableAmount: 95,
           taxTotal: 0,
-          total: -5,
+          total: 95,
         },
       ],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },

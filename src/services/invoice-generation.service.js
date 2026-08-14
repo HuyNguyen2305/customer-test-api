@@ -129,13 +129,30 @@ class InvoiceGenerationService {
   // Freezes one CustomerInvoiceTax row per distinct taxRateId referenced by the
   // source estimate's items — same snapshot rationale as attachAutoTax, just
   // sourced from the estimate's own per-line tax rates instead of an
-  // address-state lookup.
+  // address-state lookup. Each row also snapshots taxableBase: the sum of
+  // just that rate's own items (cost*qty), reduced by the same discount
+  // ratio the invoice applies overall — so a rate only ever taxes the items
+  // that actually reference it, not the whole invoice subtotal (see
+  // computeTotals in customer-invoice.service.js for the read side).
   async attachEstimateTaxes(invoice, items, options = {}) {
-    const taxRateIds = [...new Set((items ?? []).map((item) => item.taxRateId).filter(Boolean))];
+    const list = items ?? [];
+    const subtotal = list.reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
+    const discountAmount =
+      invoice.discountType === 'flat'
+        ? Number(invoice.discountValue)
+        : subtotal * (Number(invoice.discountValue) / 100);
+    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+
+    const taxRateIds = [...new Set(list.map((item) => item.taxRateId).filter(Boolean))];
 
     for (const taxRateId of taxRateIds) {
       const taxRate = await this.taxRateRepository.findByPk(taxRateId);
       if (!taxRate) continue;
+
+      const rateSubtotal = list
+        .filter((item) => item.taxRateId === taxRateId)
+        .reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
+      const taxableBase = rateSubtotal * (1 - discountRatio);
 
       await this.customerInvoiceTaxRepository.createTax(
         {
@@ -145,6 +162,7 @@ class InvoiceGenerationService {
           code: taxRate.code,
           rate: taxRate.rate,
           type: taxRate.type,
+          taxableBase,
         },
         options,
       );

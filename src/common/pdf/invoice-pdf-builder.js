@@ -43,14 +43,24 @@ function drawBillTo(doc, invoiceData, customer) {
   doc.font('Helvetica').fontSize(11).fillColor('black');
   drawAddressLines(doc, PAGE_MARGIN, top, address);
 
-  const rightColX = 330;
+  const rightColX = 325;
+  const rightColWidth = 125;
+  const contactColX = 460;
+  const contactColWidth = CONTENT_RIGHT - contactColX;
+
+  // Measure each label's own height instead of a hardcoded offset for the
+  // address block below it - different fonts wrap "SERVICE ADDRESS"/"PRIMARY
+  // CONTACT" at different points depending on their glyph widths, and a
+  // fixed offset would let a wrapped label overlap the address underneath.
   doc.font('Helvetica-Bold').fontSize(9).fillColor('#666666');
-  doc.text('SERVICE ADDRESS', rightColX, top);
-  doc.text('PRIMARY CONTACT', 470, top);
+  doc.text('SERVICE ADDRESS', rightColX, top, { width: rightColWidth });
+  const serviceLabelBottom = doc.y;
+  doc.text('PRIMARY CONTACT', contactColX, top, { width: contactColWidth });
+  const contactLabelBottom = doc.y;
 
   doc.font('Helvetica').fontSize(10).fillColor('black');
-  drawAddressLines(doc, rightColX, top + 14, address);
-  drawAddressLines(doc, 470, top + 14, { name: customerName });
+  drawAddressLines(doc, rightColX, serviceLabelBottom + 2, { ...address, width: rightColWidth });
+  drawAddressLines(doc, contactColX, contactLabelBottom + 2, { name: customerName, width: contactColWidth });
 }
 
 function drawAccountInvoiceDateRow(doc, invoiceData, customer) {
@@ -72,9 +82,9 @@ function drawAccountInvoiceDateRow(doc, invoiceData, customer) {
 
 const ITEM_COLUMNS = [
   { label: 'ITEM', x: PAGE_MARGIN, width: 300 },
-  { label: 'COST', x: 380, width: 60, align: 'right' },
-  { label: 'QTY', x: 450, width: 40, align: 'right' },
-  { label: 'PRICE', x: 500, width: 62, align: 'right' },
+  { label: 'COST', x: 362, width: 70, align: 'right' },
+  { label: 'QTY', x: 442, width: 40, align: 'right' },
+  { label: 'PRICE', x: 492, width: 70, align: 'right' },
 ];
 
 function buildItemRows(items) {

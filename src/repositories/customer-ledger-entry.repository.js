@@ -7,11 +7,11 @@ class CustomerLedgerEntryRepository extends BaseRepository {
     super(customerLedgerEntryModel);
   }
 
-  createEntry(data) {
-    return this.create(data);
+  createEntry(data, options) {
+    return this.create(data, options);
   }
 
-  async getBalanceByCustomer(customerId) {
+  async getBalanceByCustomer(customerId, options = {}) {
     const result = await this.setSchema().findOne({
       attributes: [
         [
@@ -26,6 +26,7 @@ class CustomerLedgerEntryRepository extends BaseRepository {
       ],
       where: { customerId, type: { [Op.in]: ['charge', 'payment', 'adjustment', 'refund'] } },
       raw: true,
+      transaction: options.transaction,
     });
     return Number(result?.balance) || 0;
   }
