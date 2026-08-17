@@ -15,7 +15,10 @@ describe('AddressRepository.getByIdForCustomer', () => {
       repository.getByIdForCustomer('a1', 'c1'),
     );
 
-    expect(scopedModel.findOne).toHaveBeenCalledWith({ where: { id: 'a1', customerId: 'c1' } });
+    expect(scopedModel.findOne).toHaveBeenCalledWith({
+      where: { id: 'a1', customerId: 'c1' },
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
+    });
     expect(result).toBe(address);
   });
 

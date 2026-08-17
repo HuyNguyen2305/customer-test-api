@@ -8,9 +8,28 @@ const estimateItemDataSchema = {
     itemName: { type: ['string', 'null'] },
     description: { type: ['string', 'null'] },
     cost: { type: 'number' },
-    taxRateId: { type: ['string', 'null'] },
     qty: { type: 'integer' },
     sortOrder: { type: 'integer' },
+    subtotal: { type: ['number', 'null'] },
+    tax1RateId: { type: ['string', 'null'] },
+    tax1Name: { type: ['string', 'null'] },
+    tax1Rate: { type: ['number', 'null'] },
+    tax1Total: { type: ['number', 'null'] },
+    tax2RateId: { type: ['string', 'null'] },
+    tax2Name: { type: ['string', 'null'] },
+    tax2Rate: { type: ['number', 'null'] },
+    tax2Total: { type: ['number', 'null'] },
+    total: { type: ['number', 'null'] },
+  },
+};
+
+const estimateTaxDataSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    name: { type: ['string', 'null'] },
+    rate: { type: ['number', 'null'] },
+    amount: { type: 'number' },
   },
 };
 
@@ -34,6 +53,7 @@ const estimateDataSchema = {
     subtotal: { type: 'number' },
     discountAmount: { type: 'number' },
     taxableAmount: { type: 'number' },
+    taxes: { type: 'array', items: estimateTaxDataSchema },
     taxTotal: { type: 'number' },
     total: { type: 'number' },
   },

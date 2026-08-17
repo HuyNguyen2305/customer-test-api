@@ -1,27 +1,67 @@
 import { jest } from '@jest/globals';
 
+const FAKE_TRANSACTION = { id: 'fake-transaction' };
+const transactionMock = jest.fn((fn) => fn(FAKE_TRANSACTION));
+
+jest.unstable_mockModule('#common/sequelize.js', () => ({
+  sequelize: { transaction: transactionMock },
+}));
+
 const { default: CustomerInvoiceItemService } = await import('#service/customer-invoice-item.service.js');
 const { NotFoundError, ConflictError } = await import('#configs/error.js');
+
+function buildInvoiceItemRepository({ deleted, listed = [] } = {}) {
+  return {
+    deleteItem: jest.fn().mockResolvedValue(deleted),
+    listByInvoiceId: jest.fn().mockResolvedValue(listed),
+    updateMany: jest.fn().mockResolvedValue(undefined),
+  };
+}
 
 describe('CustomerInvoiceItemService.removeItem', () => {
   it('deletes a line item on a draft invoice owned by the customer', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
+      findSummaryByIdForCustomer: jest
+        .fn()
+        .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = { deleteItem: jest.fn().mockResolvedValue(true) };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: true });
 
     await service.removeItem('c1', 'i1', 'ii1');
 
-    expect(service.customerInvoiceItemRepository.deleteItem).toHaveBeenCalledWith('ii1', 'i1');
+    expect(service.customerInvoiceItemRepository.deleteItem).toHaveBeenCalledWith('ii1', 'i1', {
+      transaction: FAKE_TRANSACTION,
+    });
+  });
+
+  it('recomputes the remaining siblings after the delete, since the removed item shifted the shared discount ratio', async () => {
+    const service = Object.create(CustomerInvoiceItemService.prototype);
+    service.customerInvoiceRepository = {
+      findSummaryByIdForCustomer: jest
+        .fn()
+        .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
+    };
+    const remaining = { id: 'ii2', cost: 30, qty: 1, tax1Rate: 5 };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: true, listed: [remaining] });
+
+    await service.removeItem('c1', 'i1', 'ii1');
+
+    expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('i1', {
+      transaction: FAKE_TRANSACTION,
+    });
+    expect(service.customerInvoiceItemRepository.updateMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'ii2' })],
+      { transaction: FAKE_TRANSACTION },
+    );
   });
 
   it('throws ConflictError when the invoice is not a draft', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'void' }),
+      findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'void' }),
     };
-    service.customerInvoiceItemRepository = { deleteItem: jest.fn() };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository();
 
     await expect(service.removeItem('c1', 'i1', 'ii1')).rejects.toThrow(ConflictError);
     expect(service.customerInvoiceItemRepository.deleteItem).not.toHaveBeenCalled();
@@ -30,9 +70,9 @@ describe('CustomerInvoiceItemService.removeItem', () => {
   it('throws NotFoundError when the item does not exist on that invoice', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
+      findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
     };
-    service.customerInvoiceItemRepository = { deleteItem: jest.fn().mockResolvedValue(false) };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: false });
 
     await expect(service.removeItem('c1', 'i1', 'missing-item')).rejects.toThrow(NotFoundError);
   });

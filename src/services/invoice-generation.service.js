@@ -3,6 +3,7 @@ import { UniqueConstraintError } from 'sequelize';
 import { sequelize } from '#common/sequelize.js';
 import { ConflictError, NotFoundError } from '#configs/error.js';
 import { computeNextOccurrences } from './recurrence/recurrence-rule.util.js';
+import { recomputeItems } from './billing-calculation.util.js';
 
 class InvoiceGenerationService {
   constructor({
@@ -14,7 +15,6 @@ class InvoiceGenerationService {
     invoiceItemRepository,
     customerInvoiceItemRepository,
     taxRateRepository,
-    customerInvoiceTaxRepository,
     customerEstimateRepository,
   }) {
     this.bookingRepository = bookingRepository;
@@ -25,13 +25,22 @@ class InvoiceGenerationService {
     this.invoiceItemRepository = invoiceItemRepository;
     this.customerInvoiceItemRepository = customerInvoiceItemRepository;
     this.taxRateRepository = taxRateRepository;
-    this.customerInvoiceTaxRepository = customerInvoiceTaxRepository;
     this.customerEstimateRepository = customerEstimateRepository;
+  }
+
+  // Every item on the invoice shares one discount ratio, so this must run
+  // after any step that creates or tax-assigns items (copyLineItems +
+  // attachAutoTax, or copyEstimateLineItems) - refetches the current full
+  // set and rewrites each one's subtotal/tax/total columns.
+  async recomputeInvoiceItems(invoice, options = {}) {
+    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, options);
+    const patches = recomputeItems(items, invoice);
+    await this.customerInvoiceItemRepository.updateMany(patches, options);
   }
 
   // Copies the booking's address onto the invoice at generation time, frozen from
   // that point on — editing the saved address later must not change how past
-  // invoices display (same rationale as the tax-rate snapshot on CustomerInvoiceTax).
+  // invoices display (same rationale as the tax-rate snapshot on each item's tax1/tax2 columns).
   async buildAddressSnapshot(booking) {
     if (!booking.addressId) return { addressId: null };
 
@@ -71,9 +80,10 @@ class InvoiceGenerationService {
     );
   }
 
-  // Matches the invoice's snapshotted state to a seeded TaxRate and freezes a
-  // CustomerInvoiceTax row from it — same rationale as the address snapshot: a
-  // later edit to the master TaxRate must not retroactively change this invoice.
+  // Matches the invoice's snapshotted state to a seeded TaxRate and stamps it
+  // onto tax1 of every item on the invoice — same rationale as the address
+  // snapshot: a later edit to the master TaxRate must not retroactively
+  // change this invoice. Must run after copyLineItems so the items exist.
   async attachAutoTax(invoice, addressSnapshot, options = {}) {
     const state = addressSnapshot?.addressState;
     if (!state) return;
@@ -81,15 +91,16 @@ class InvoiceGenerationService {
     const taxRate = await this.taxRateRepository.findByState(state);
     if (!taxRate) return;
 
-    await this.customerInvoiceTaxRepository.createTax(
-      {
-        customerInvoiceId: invoice.id,
-        taxRateId: taxRate.id,
-        name: taxRate.name,
-        code: taxRate.code,
-        rate: taxRate.rate,
-        type: taxRate.type,
-      },
+    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, options);
+    if (!items.length) return;
+
+    await this.customerInvoiceItemRepository.updateMany(
+      items.map((item) => ({
+        id: item.id,
+        tax1RateId: taxRate.id,
+        tax1Name: taxRate.name,
+        tax1Rate: taxRate.rate,
+      })),
       options,
     );
   }
@@ -103,13 +114,17 @@ class InvoiceGenerationService {
       const invoice = await this.customerInvoiceRepository.createInvoice(invoiceData, { transaction });
       await this.copyLineItems(invoice, sourceInvoiceId, { transaction });
       await this.attachAutoTax(invoice, addressSnapshot, { transaction });
+      await this.recomputeInvoiceItems(invoice, { transaction });
       return invoice;
     });
   }
 
-  // Copies the source estimate's items onto the newly created invoice.
-  // CustomerInvoiceItem has no taxRateId column (invoice tax is invoice-level,
-  // not per-line), so that field is intentionally dropped here.
+  // Copies the source estimate's items onto the newly created invoice,
+  // including their already-resolved tax1/tax2 snapshot (CustomerEstimateService
+  // resolves+computes these on every estimate read, so they're current as of
+  // the moment this estimate was converted). The numeric subtotal/tax/total
+  // columns are filled in afterwards by recomputeInvoiceItems, not copied
+  // directly, since the invoice is its own item set with its own combined subtotal.
   async copyEstimateLineItems(invoice, items, options = {}) {
     if (!items?.length) return;
 
@@ -121,52 +136,15 @@ class InvoiceGenerationService {
         cost: item.cost,
         qty: item.qty,
         sortOrder: item.sortOrder,
+        tax1RateId: item.tax1RateId,
+        tax1Name: item.tax1Name,
+        tax1Rate: item.tax1Rate,
+        tax2RateId: item.tax2RateId,
+        tax2Name: item.tax2Name,
+        tax2Rate: item.tax2Rate,
       })),
       options,
     );
-  }
-
-  // Freezes one CustomerInvoiceTax row per distinct taxRateId referenced by the
-  // source estimate's items — same snapshot rationale as attachAutoTax, just
-  // sourced from the estimate's own per-line tax rates instead of an
-  // address-state lookup. Each row also snapshots taxableBase: the sum of
-  // just that rate's own items (cost*qty), reduced by the same discount
-  // ratio the invoice applies overall — so a rate only ever taxes the items
-  // that actually reference it, not the whole invoice subtotal (see
-  // computeTotals in customer-invoice.service.js for the read side).
-  async attachEstimateTaxes(invoice, items, options = {}) {
-    const list = items ?? [];
-    const subtotal = list.reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
-    const discountAmount =
-      invoice.discountType === 'flat'
-        ? Number(invoice.discountValue)
-        : subtotal * (Number(invoice.discountValue) / 100);
-    const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-
-    const taxRateIds = [...new Set(list.map((item) => item.taxRateId).filter(Boolean))];
-
-    for (const taxRateId of taxRateIds) {
-      const taxRate = await this.taxRateRepository.findByPk(taxRateId);
-      if (!taxRate) continue;
-
-      const rateSubtotal = list
-        .filter((item) => item.taxRateId === taxRateId)
-        .reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
-      const taxableBase = rateSubtotal * (1 - discountRatio);
-
-      await this.customerInvoiceTaxRepository.createTax(
-        {
-          customerInvoiceId: invoice.id,
-          taxRateId: taxRate.id,
-          name: taxRate.name,
-          code: taxRate.code,
-          rate: taxRate.rate,
-          type: taxRate.type,
-          taxableBase,
-        },
-        options,
-      );
-    }
   }
 
   // Creates an invoice from a CustomerEstimate: the estimate's fields/items/
@@ -198,7 +176,7 @@ class InvoiceGenerationService {
           { transaction },
         );
         await this.copyEstimateLineItems(invoice, estimate.items, { transaction });
-        await this.attachEstimateTaxes(invoice, estimate.items, { transaction });
+        await this.recomputeInvoiceItems(invoice, { transaction });
 
         if (estimate.status !== 'approved') {
           await this.customerEstimateRepository.updateStatus(estimate.id, customerId, 'approved', { transaction });

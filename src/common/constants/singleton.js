@@ -6,10 +6,9 @@ export const REPOSITORY_KEYS = {
   SERVICE_REPOSITORY: 'serviceRepository',
   SERVICE_RECURRENCE_REPOSITORY: 'serviceRecurrenceRepository',
   TODO_LIST_REPOSITORY: 'todoListRepository',
+  TODO_REPOSITORY: 'todoRepository',
   MATERIAL_REPOSITORY: 'materialRepository',
   JOB_MATERIAL_REPOSITORY: 'jobMaterialRepository',
-  JOB_TODO_LIST_REPOSITORY: 'jobTodoListRepository',
-  JOB_TODO_REPOSITORY: 'jobTodoRepository',
   CUSTOMER_INVOICE_REPOSITORY: 'customerInvoiceRepository',
   INVOICE_FREQUENCY_REPOSITORY: 'invoiceFrequencyRepository',
   SERVICE_INVOICE_REPOSITORY: 'serviceInvoiceRepository',
@@ -23,7 +22,7 @@ export const REPOSITORY_KEYS = {
   INVOICE_ITEM_REPOSITORY: 'invoiceItemRepository',
   CUSTOMER_INVOICE_ITEM_REPOSITORY: 'customerInvoiceItemRepository',
   ITEM_REPOSITORY: 'itemRepository',
-  CUSTOMER_INVOICE_TAX_REPOSITORY: 'customerInvoiceTaxRepository',
+  CUSTOMER_ESTIMATE_ITEM_REPOSITORY: 'customerEstimateItemRepository',
 };
 
 export const SERVICE_KEYS = {

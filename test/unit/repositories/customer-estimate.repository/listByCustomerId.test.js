@@ -20,8 +20,13 @@ function buildRepository({ withBooking = false } = {}) {
   return { repository, scopedModel, scopedItemModel, scopedTaxRateModel };
 }
 
+const itemIncludes = (scopedTaxRateModel) => [
+  { model: scopedTaxRateModel, as: 'Tax1Rate', attributes: ['name', 'rate'] },
+  { model: scopedTaxRateModel, as: 'Tax2Rate', attributes: ['name', 'rate'] },
+];
+
 describe('CustomerEstimateRepository.listByCustomerId', () => {
-  it('queries estimates scoped to the customerId with pagination, including items for totals', async () => {
+  it('queries estimates scoped to the customerId with pagination, including items (with both tax rate slots) for totals', async () => {
     const { repository, scopedModel, scopedItemModel, scopedTaxRateModel } = buildRepository();
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
@@ -34,7 +39,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
       offset: 0,
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['updatedAt'] },
-      include: [{ model: scopedItemModel, as: 'items', include: [{ model: scopedTaxRateModel }] }],
+      include: [{ model: scopedItemModel, as: 'items', include: itemIncludes(scopedTaxRateModel) }],
     });
   });
 
@@ -62,7 +67,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
     expect(scopedModel.findAndCountAll).toHaveBeenCalledWith(
       expect.objectContaining({
         include: [
-          { model: scopedItemModel, as: 'items', include: [{ model: scopedTaxRateModel }] },
+          { model: scopedItemModel, as: 'items', include: itemIncludes(scopedTaxRateModel) },
           { model: scopedBookingModel, attributes: [], where: { addressId: 'addr1' }, required: true },
         ],
       }),

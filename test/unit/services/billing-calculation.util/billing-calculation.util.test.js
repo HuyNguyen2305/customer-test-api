@@ -1,0 +1,156 @@
+import {
+  computeDiscountRatio,
+  computeItemAmounts,
+  recomputeItems,
+  computeEntityTotals,
+} from '#service/billing-calculation.util.js';
+
+describe('computeDiscountRatio', () => {
+  it('returns 0 when the subtotal is zero or negative', () => {
+    expect(computeDiscountRatio(0, 'flat', 10)).toBe(0);
+    expect(computeDiscountRatio(-5, 'flat', 10)).toBe(0);
+  });
+
+  it('computes a flat discount as a fraction of the subtotal', () => {
+    expect(computeDiscountRatio(200, 'flat', 50)).toBe(0.25);
+  });
+
+  it('computes a percent discount directly as the ratio', () => {
+    expect(computeDiscountRatio(200, 'percent', 10)).toBe(0.1);
+  });
+});
+
+describe('computeItemAmounts', () => {
+  it('taxes the item on its discount-adjusted share for both tax slots', () => {
+    const item = { cost: 100, qty: 1, tax1RateId: 't1', tax1Name: 'NY', tax1Rate: 4, tax2RateId: null, tax2Rate: null };
+
+    const result = computeItemAmounts(item, 0.5);
+
+    expect(result.subtotal).toBe(100);
+    expect(result.tax1Total).toBe(2); // (100 * (1 - 0.5)) * 4%
+    expect(result.tax2Total).toBeNull();
+    expect(result.total).toBe(102);
+  });
+
+  it('sums both tax slots into total when both are present', () => {
+    const item = { cost: 100, qty: 2, tax1Rate: 4, tax2Rate: 6.25 };
+
+    const result = computeItemAmounts(item, 0);
+
+    expect(result.subtotal).toBe(200);
+    expect(result.tax1Total).toBe(8);
+    expect(result.tax2Total).toBe(12.5);
+    expect(result.total).toBe(220.5);
+  });
+
+  it('leaves both tax totals null and total equal to subtotal when no rate is assigned', () => {
+    const item = { cost: 50, qty: 1, tax1Rate: null, tax2Rate: null };
+
+    const result = computeItemAmounts(item, 0.1);
+
+    expect(result.tax1Total).toBeNull();
+    expect(result.tax2Total).toBeNull();
+    expect(result.total).toBe(50);
+  });
+});
+
+describe('recomputeItems', () => {
+  it("derives one discount ratio from the combined subtotal and applies it to every item's own tax", () => {
+    const items = [
+      { id: 'i1', cost: 30, qty: 1, tax1Rate: 5 },
+      { id: 'i2', cost: 70, qty: 1, tax1Rate: 10 },
+    ];
+
+    const patches = recomputeItems(items, { discountType: 'flat', discountValue: 20 });
+
+    // subtotal 100, discount 20 -> ratio 0.2 -> i1 taxable 24, i2 taxable 56
+    expect(patches.find((p) => p.id === 'i1').tax1Total).toBeCloseTo(1.2, 10);
+    expect(patches.find((p) => p.id === 'i2').tax1Total).toBeCloseTo(5.6, 10);
+  });
+
+  it('returns an empty array for no items', () => {
+    expect(recomputeItems(undefined, { discountType: 'flat', discountValue: 0 })).toEqual([]);
+  });
+});
+
+describe('computeEntityTotals', () => {
+  it('computes subtotal/discount/taxable amount from items', () => {
+    const result = computeEntityTotals({
+      items: [{ subtotal: 200, tax1RateId: null, tax2RateId: null }],
+      discountType: 'percent',
+      discountValue: 10,
+    });
+
+    expect(result.subtotal).toBe(200);
+    expect(result.discountAmount).toBe(20);
+    expect(result.taxableAmount).toBe(180);
+    expect(result.total).toBe(180);
+  });
+
+  it("rolls each item's tax1/tax2 slots up into one row per distinct rate", () => {
+    const result = computeEntityTotals({
+      items: [
+        { subtotal: 30, tax1RateId: 'tax-a', tax1Name: 'A', tax1Rate: 5, tax1Total: 1.5, tax2RateId: null },
+        { subtotal: 70, tax1RateId: 'tax-b', tax1Name: 'B', tax1Rate: 10, tax1Total: 7, tax2RateId: null },
+      ],
+      discountType: 'flat',
+      discountValue: 0,
+    });
+
+    expect(result.taxes).toEqual([
+      { id: 'tax-a', name: 'A', rate: 5, amount: 1.5 },
+      { id: 'tax-b', name: 'B', rate: 10, amount: 7 },
+    ]);
+    expect(result.taxTotal).toBe(8.5);
+    expect(result.total).toBe(108.5);
+  });
+
+  it('sums contributions from multiple items sharing the same tax rate', () => {
+    const result = computeEntityTotals({
+      items: [
+        { subtotal: 30, tax1RateId: 'tax-a', tax1Name: 'A', tax1Rate: 5, tax1Total: 1.5, tax2RateId: null },
+        { subtotal: 20, tax1RateId: 'tax-a', tax1Name: 'A', tax1Rate: 5, tax1Total: 1, tax2RateId: null },
+      ],
+      discountType: 'flat',
+      discountValue: 0,
+    });
+
+    expect(result.taxes).toEqual([{ id: 'tax-a', name: 'A', rate: 5, amount: 2.5 }]);
+  });
+
+  it('rolls up both tax1 and tax2 slots on the same item as separate rows', () => {
+    const result = computeEntityTotals({
+      items: [
+        {
+          subtotal: 100,
+          tax1RateId: 'tax-a',
+          tax1Name: 'A',
+          tax1Rate: 4,
+          tax1Total: 4,
+          tax2RateId: 'tax-b',
+          tax2Name: 'B',
+          tax2Rate: 6.25,
+          tax2Total: 6.25,
+        },
+      ],
+      discountType: 'flat',
+      discountValue: 0,
+    });
+
+    expect(result.taxes).toEqual([
+      { id: 'tax-a', name: 'A', rate: 4, amount: 4 },
+      { id: 'tax-b', name: 'B', rate: 6.25, amount: 6.25 },
+    ]);
+    expect(result.taxTotal).toBe(10.25);
+  });
+
+  it('falls back to cost*qty for subtotal when an item has no persisted subtotal yet', () => {
+    const result = computeEntityTotals({
+      items: [{ cost: 40, qty: 2, tax1RateId: null, tax2RateId: null }],
+      discountType: 'flat',
+      discountValue: 0,
+    });
+
+    expect(result.subtotal).toBe(80);
+  });
+});

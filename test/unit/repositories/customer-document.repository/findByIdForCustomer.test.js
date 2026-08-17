@@ -23,7 +23,11 @@ describe('CustomerDocumentRepository.findByIdForCustomer', () => {
 
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'd1', customerId: 'c1' },
-      include: [{ model: scopedLibraryModel }, { model: scopedPdfModel }],
+      attributes: { exclude: ['customerId', 'documentId', 'pdfId', 'updatedAt'] },
+      include: [
+        { model: scopedLibraryModel, attributes: ['name', 'filePath', 'originalFileName'] },
+        { model: scopedPdfModel, attributes: ['name', 'filePath', 'originalFileName'] },
+      ],
     });
     expect(result).toBe(document);
   });

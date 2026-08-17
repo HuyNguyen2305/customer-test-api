@@ -25,7 +25,11 @@ describe('CustomerDocumentRepository.listByCustomerId', () => {
       limit: 20,
       offset: 0,
       order: [['createdAt', 'DESC']],
-      include: [{ model: scopedLibraryModel }, { model: scopedPdfModel }],
+      attributes: { exclude: ['customerId', 'documentId', 'pdfId', 'updatedAt'] },
+      include: [
+        { model: scopedLibraryModel, attributes: ['name'] },
+        { model: scopedPdfModel, attributes: ['name'] },
+      ],
     });
     expect(result).toEqual({ rows: [{ id: 'd1' }], count: 1 });
   });

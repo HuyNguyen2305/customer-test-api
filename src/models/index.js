@@ -29,12 +29,9 @@ import defineCustomer from './customer.model.js';
 import defineRevokedToken from './revoked-token.model.js';
 import defineBooking from './booking.model.js';
 import defineJobMaterial from './job-material.model.js';
-import defineJobTodoList from './job-todo-list.model.js';
-import defineJobTodo from './job-todo.model.js';
 import defineAddress from './address.model.js';
 import defineCustomerInvoice from './customer-invoice.model.js';
 import defineCustomerInvoiceItem from './customer-invoice-item.model.js';
-import defineCustomerInvoiceTax from './customer-invoice-tax.model.js';
 import defineServiceInvoiceTax from './service-invoice-tax.model.js';
 import defineCustomerEstimate from './customer-estimate.model.js';
 import defineCustomerEstimateItem from './customer-estimate-item.model.js';
@@ -71,12 +68,9 @@ for (const define of [
   defineRevokedToken,
   defineBooking,
   defineJobMaterial,
-  defineJobTodoList,
-  defineJobTodo,
   defineAddress,
   defineCustomerInvoice,
   defineCustomerInvoiceItem,
-  defineCustomerInvoiceTax,
   defineServiceInvoiceTax,
   defineCustomerEstimate,
   defineCustomerEstimateItem,
@@ -114,12 +108,9 @@ const {
   Customer,
   Booking,
   JobMaterial,
-  JobTodoList,
-  JobTodo,
   Address,
   CustomerInvoice,
   CustomerInvoiceItem,
-  CustomerInvoiceTax,
   ServiceInvoiceTax,
   CustomerEstimate,
   CustomerEstimateItem,
@@ -172,6 +163,9 @@ ServiceDocument.belongsTo(Service, { foreignKey: 'serviceId' });
 ServiceDocument.belongsTo(ServiceDocumentLibrary, { foreignKey: 'documentId' });
 ServiceDocument.belongsTo(Pdf, { foreignKey: 'pdfId' });
 
+// TodoList doubles as both a reusable checklist template (serviceId set) and a
+// per-booking snapshot copy of one (bookingId set) - exactly one is non-null,
+// enforced by a DB CHECK constraint (see the table-merge migration).
 Service.hasMany(TodoList, { foreignKey: 'serviceId' });
 TodoList.belongsTo(Service, { foreignKey: 'serviceId' });
 TodoList.hasMany(Todo, { foreignKey: 'todoListId' });
@@ -191,10 +185,8 @@ JobMaterial.belongsTo(CustomMaterial, { foreignKey: 'customMaterialId' });
 JobMaterial.belongsTo(Location, { foreignKey: 'locationId' });
 JobMaterial.belongsTo(Pest, { foreignKey: 'targetPestId' });
 
-Booking.hasMany(JobTodoList, { foreignKey: 'bookingId' });
-JobTodoList.belongsTo(Booking, { foreignKey: 'bookingId' });
-JobTodoList.hasMany(JobTodo, { foreignKey: 'jobTodoListId' });
-JobTodo.belongsTo(JobTodoList, { foreignKey: 'jobTodoListId' });
+Booking.hasMany(TodoList, { foreignKey: 'bookingId' });
+TodoList.belongsTo(Booking, { foreignKey: 'bookingId' });
 
 Customer.hasMany(Address, { foreignKey: 'customerId' });
 Address.belongsTo(Customer, { foreignKey: 'customerId' });
@@ -209,10 +201,8 @@ Customer.hasMany(CustomerInvoice, { foreignKey: 'customerId' });
 CustomerInvoice.hasMany(CustomerInvoiceItem, { foreignKey: 'customerInvoiceId', as: 'items' });
 CustomerInvoiceItem.belongsTo(CustomerInvoice, { foreignKey: 'customerInvoiceId' });
 CustomerInvoiceItem.belongsTo(Item, { foreignKey: 'itemId' });
-
-CustomerInvoice.hasMany(CustomerInvoiceTax, { foreignKey: 'customerInvoiceId', as: 'taxes' });
-CustomerInvoiceTax.belongsTo(CustomerInvoice, { foreignKey: 'customerInvoiceId' });
-CustomerInvoiceTax.belongsTo(TaxRate, { foreignKey: 'taxRateId' });
+CustomerInvoiceItem.belongsTo(TaxRate, { foreignKey: 'tax1RateId', as: 'Tax1Rate' });
+CustomerInvoiceItem.belongsTo(TaxRate, { foreignKey: 'tax2RateId', as: 'Tax2Rate' });
 
 CustomerInvoice.belongsTo(Address, { foreignKey: 'addressId', as: 'address' });
 Address.hasMany(CustomerInvoice, { foreignKey: 'addressId' });
@@ -228,7 +218,8 @@ Customer.hasMany(CustomerEstimate, { foreignKey: 'customerId' });
 CustomerEstimate.hasMany(CustomerEstimateItem, { foreignKey: 'customerEstimateId', as: 'items' });
 CustomerEstimateItem.belongsTo(CustomerEstimate, { foreignKey: 'customerEstimateId' });
 CustomerEstimateItem.belongsTo(Item, { foreignKey: 'itemId' });
-CustomerEstimateItem.belongsTo(TaxRate, { foreignKey: 'taxRateId' });
+CustomerEstimateItem.belongsTo(TaxRate, { foreignKey: 'tax1RateId', as: 'Tax1Rate' });
+CustomerEstimateItem.belongsTo(TaxRate, { foreignKey: 'tax2RateId', as: 'Tax2Rate' });
 
 Customer.hasMany(CustomerDocument, { foreignKey: 'customerId' });
 CustomerDocument.belongsTo(Customer, { foreignKey: 'customerId' });

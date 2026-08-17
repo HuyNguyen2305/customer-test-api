@@ -23,7 +23,10 @@ describe('WorkOrderRepository.findCompletedByIdForCustomer', () => {
 
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'b1', customerId: 'c1', status: 'completed' },
-      include: [{ model: scopedServiceModel }, { model: scopedAddressModel }],
+      include: [
+        { model: scopedServiceModel, attributes: ['name'] },
+        { model: scopedAddressModel, attributes: ['id', 'label', 'line1', 'line2', 'city', 'state', 'zip', 'country'] },
+      ],
     });
     expect(result).toBe(booking);
   });

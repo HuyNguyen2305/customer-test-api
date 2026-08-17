@@ -6,7 +6,7 @@ class BalanceRepository extends BaseRepository {
   }
 
   getBalance(customerId) {
-    return this.findOne({ where: { customerId } });
+    return this.findOne({ where: { customerId }, attributes: ['amount', 'currency'] });
   }
 
   setAmount(customerId, amount, options = {}) {

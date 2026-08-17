@@ -32,7 +32,13 @@ class CustomerLedgerEntryRepository extends BaseRepository {
   }
 
   listByCustomerId(customerId, { limit, offset } = {}) {
-    return this.findAndCountAll({ where: { customerId }, limit, offset, order: [['createdAt', 'DESC']] });
+    return this.findAndCountAll({
+      where: { customerId },
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['customerId'] },
+    });
   }
 }
 

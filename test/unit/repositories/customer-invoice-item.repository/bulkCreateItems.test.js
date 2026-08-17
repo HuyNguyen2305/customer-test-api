@@ -11,7 +11,10 @@ describe('CustomerInvoiceItemRepository.bulkCreateItems', () => {
     const repository = Object.create(CustomerInvoiceItemRepository.prototype);
     repository.model = model;
 
-    const items = [{ customerInvoiceId: 'i1', itemId: 'a' }, { customerInvoiceId: 'i1', itemId: 'b' }];
+    const items = [
+      { customerInvoiceId: 'i1', itemId: 'a' },
+      { customerInvoiceId: 'i1', itemId: 'b' },
+    ];
     const options = { transaction: 'tx' };
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.bulkCreateItems(items, options),

@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { seedWithTransaction, TEST_SCHEMA } from '../../helpers/seed-fixtures.js';
 import fixtures from '../../fixtures/customer-portal.fixtures.cjs';
+import models from '../../../src/models/index.js';
 
 const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'customer-portal-router-download-'));
 process.env.UPLOAD_DIR = uploadDir;
@@ -656,6 +657,150 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(estimateARow.subtotal).toBe(estimateItemA.cost * estimateItemA.qty);
       expect(estimateARow.total).toBe(estimateItemA.cost * estimateItemA.qty);
       expect(estimateARow.createdAt).toEqual(expect.any(String));
+
+      await app.close();
+    });
+  });
+
+  it('GET /customer/estimates/:id caches computed tax onto each item row (tax1RateId/tax1Total etc), self-consistently across repeated reads', async () => {
+    const taxRateNY = { id: 'aaaaaaaa-1111-2222-3333-444444444444', name: 'NY Sales Tax', code: 'NY', rate: 4 };
+    const taxRateTX = { id: 'aaaaaaaa-1111-2222-3333-555555555555', name: 'TX Sales Tax', code: 'TX', rate: 6.25 };
+    const taxedEstimate = {
+      id: 'aaaaaaaa-1111-2222-3333-666666666666',
+      bookingId: bookingA.id,
+      customerId: customerA.id,
+      status: 'sent',
+    };
+    const taxedItem1 = {
+      id: 'aaaaaaaa-1111-2222-3333-777777777777',
+      customerEstimateId: taxedEstimate.id,
+      itemId: item1.id,
+      description: 'NY item',
+      cost: 100,
+      qty: 1,
+      tax1RateId: taxRateNY.id,
+    };
+    const taxedItem2 = {
+      id: 'aaaaaaaa-1111-2222-3333-888888888888',
+      customerEstimateId: taxedEstimate.id,
+      itemId: item1.id,
+      description: 'TX item',
+      cost: 100,
+      qty: 1,
+      tax1RateId: taxRateTX.id,
+    };
+
+    // TaxRate must be created before CustomerEstimateItem (which references it
+    // via tax1RateId), so it's spread in first - seedWithTransaction creates
+    // rows in Object.entries() order and tears them down in reverse.
+    const seed = {
+      TaxRate: [taxRateNY, taxRateTX],
+      ...allFixtures,
+      CustomerEstimate: [...allFixtures.CustomerEstimate, taxedEstimate],
+      CustomerEstimateItem: [...allFixtures.CustomerEstimateItem, taxedItem1, taxedItem2],
+    };
+
+    await seedWithTransaction(seed, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const first = await app.inject({
+        method: 'GET',
+        url: `/customer/estimates/${taxedEstimate.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(first.statusCode).toBe(200);
+      const firstBody = first.json();
+      // 2 items @ $100, 4% and 6.25%, no discount -> $100 + $4 + $6.25 = $210.25
+      expect(firstBody.data.total).toBeCloseTo(210.25, 2);
+      expect(firstBody.data.taxes).toHaveLength(2);
+
+      const itemsAfterFirst = await models.CustomerEstimateItem.schema(TEST_SCHEMA).findAll({
+        where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
+      });
+      expect(itemsAfterFirst.map((row) => Number(row.tax1Total)).sort()).toEqual([4, 6.25]);
+      expect(itemsAfterFirst.every((row) => row.tax1Name)).toBe(true);
+
+      const second = await app.inject({
+        method: 'GET',
+        url: `/customer/estimates/${taxedEstimate.id}`,
+        headers: headersFor(customerA.id),
+      });
+
+      expect(second.statusCode).toBe(200);
+      expect(second.json().data.total).toBeCloseTo(210.25, 2);
+
+      const itemsAfterSecond = await models.CustomerEstimateItem.schema(TEST_SCHEMA).findAll({
+        where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
+      });
+      // Re-read must not change or duplicate anything - same 2 items, same amounts.
+      expect(itemsAfterSecond.map((row) => Number(row.tax1Total)).sort()).toEqual([4, 6.25]);
+
+      await app.close();
+    });
+  });
+
+  it('adding an untaxed line item to a draft invoice recomputes the discount ratio for its already-taxed sibling', async () => {
+    const taxRate = { id: 'bbbbbbbb-1111-2222-3333-444444444444', name: 'State Tax', code: 'ST', rate: 10 };
+    const cascadeInvoice = {
+      id: 'bbbbbbbb-1111-2222-3333-555555555555',
+      bookingId: bookingA.id,
+      customerId: customerA.id,
+      status: 'draft',
+      discountValue: 20,
+      discountType: 'flat',
+    };
+    // tax1Name/tax1Rate are seeded alongside tax1RateId to simulate the
+    // snapshot a real attachAutoTax/copyEstimateLineItems assignment would
+    // already have written - invoice items never re-resolve a TaxRate live,
+    // so without this the item would be treated as having no tax at all.
+    const taxedInvoiceItem = {
+      id: 'bbbbbbbb-1111-2222-3333-666666666666',
+      customerInvoiceId: cascadeInvoice.id,
+      itemId: item1.id,
+      description: 'Taxed item',
+      cost: 80,
+      qty: 1,
+      tax1RateId: taxRate.id,
+      tax1Name: taxRate.name,
+      tax1Rate: taxRate.rate,
+    };
+
+    const seed = {
+      TaxRate: [taxRate],
+      ...allFixtures,
+      CustomerInvoice: [...allFixtures.CustomerInvoice, cascadeInvoice],
+      CustomerInvoiceItem: [...allFixtures.CustomerInvoiceItem, taxedInvoiceItem],
+    };
+
+    await seedWithTransaction(seed, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const addResponse = await app.inject({
+        method: 'POST',
+        url: `/customer/invoices/${cascadeInvoice.id}/items`,
+        headers: headersFor(customerA.id),
+        payload: { itemId: item1.id, qty: 1 },
+      });
+      expect(addResponse.statusCode).toBe(200);
+
+      const items = await models.CustomerInvoiceItem.schema(TEST_SCHEMA).findAll({
+        where: { customerInvoiceId: cascadeInvoice.id },
+      });
+      const taxedRow = items.find((row) => row.id === taxedInvoiceItem.id);
+      const untaxedRow = items.find((row) => row.id !== taxedInvoiceItem.id);
+
+      // subtotal 80 (taxed) + item1.defaultCost (untaxed) - $20 discount ->
+      // ratio applies proportionally; the taxed item's tax1Total must reflect
+      // the new combined subtotal, not the $80-only ratio it had before the add.
+      const combinedSubtotal = 80 + Number(item1.defaultCost);
+      const expectedRatio = 20 / combinedSubtotal;
+      const expectedTax1Total = 80 * (1 - expectedRatio) * 0.1;
+      // The column is DECIMAL(12,2), so Postgres rounds to cents on write.
+      expect(Number(taxedRow.tax1Total)).toBeCloseTo(expectedTax1Total, 2);
+      expect(untaxedRow.tax1RateId).toBeNull();
 
       await app.close();
     });

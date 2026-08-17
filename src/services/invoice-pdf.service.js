@@ -9,7 +9,7 @@ class InvoicePdfService {
   }
 
   async getInvoicePdf(id, customerId) {
-    const invoice = await this.customerInvoiceRepository.findByIdForCustomer(id, customerId);
+    const invoice = await this.customerInvoiceRepository.findByIdForPdf(id, customerId);
     if (!invoice) throw new NotFoundError('Invoice not found');
 
     const invoiceData = toInvoiceData(invoice);

@@ -8,6 +8,16 @@ const lineItemDataSchema = {
     cost: { type: 'number' },
     qty: { type: 'integer' },
     sortOrder: { type: 'integer' },
+    subtotal: { type: ['number', 'null'] },
+    tax1RateId: { type: ['string', 'null'] },
+    tax1Name: { type: ['string', 'null'] },
+    tax1Rate: { type: ['number', 'null'] },
+    tax1Total: { type: ['number', 'null'] },
+    tax2RateId: { type: ['string', 'null'] },
+    tax2Name: { type: ['string', 'null'] },
+    tax2Rate: { type: ['number', 'null'] },
+    tax2Total: { type: ['number', 'null'] },
+    total: { type: ['number', 'null'] },
   },
 };
 

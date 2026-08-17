@@ -8,7 +8,10 @@ class CustomerPaymentMethodRepository extends BaseRepository {
   }
 
   listByCustomerId(customerId) {
-    return this.findAll({ where: { customerId } });
+    return this.findAll({
+      where: { customerId },
+      attributes: { exclude: ['customerId', 'gatewayCustomerId', 'createdAt', 'updatedAt'] },
+    });
   }
 
   addPaymentMethod(data) {

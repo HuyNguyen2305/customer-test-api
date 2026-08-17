@@ -45,11 +45,28 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     expect(result.items).toBeUndefined();
   });
 
-  it('maps items to a clean shape under the `items` key when loaded', async () => {
+  it('maps items to a clean shape under the `items` key when loaded, including their persisted tax columns', async () => {
     const invoiceWithItems = {
       ...baseInvoice,
       items: [
-        { id: 'ii1', itemId: 'item1', description: 'Treatment', cost: 100, taxRateId: null, qty: 1, sortOrder: 0 },
+        {
+          id: 'ii1',
+          itemId: 'item1',
+          description: 'Treatment',
+          cost: 100,
+          qty: 1,
+          sortOrder: 0,
+          subtotal: 100,
+          tax1RateId: null,
+          tax1Name: null,
+          tax1Rate: null,
+          tax1Total: null,
+          tax2RateId: null,
+          tax2Name: null,
+          tax2Rate: null,
+          tax2Total: null,
+          total: 100,
+        },
       ],
     };
     const service = Object.create(CustomerInvoiceService.prototype);
@@ -58,7 +75,24 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     const result = await service.getInvoiceById('i1', 'c1');
 
     expect(result.items).toEqual([
-      { id: 'ii1', itemId: 'item1', description: 'Treatment', cost: 100, qty: 1, sortOrder: 0 },
+      {
+        id: 'ii1',
+        itemId: 'item1',
+        description: 'Treatment',
+        cost: 100,
+        qty: 1,
+        sortOrder: 0,
+        subtotal: 100,
+        tax1RateId: null,
+        tax1Name: null,
+        tax1Rate: null,
+        tax1Total: null,
+        tax2RateId: null,
+        tax2Name: null,
+        tax2Rate: null,
+        tax2Total: null,
+        total: 100,
+      },
     ]);
   });
 
@@ -79,18 +113,42 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
     expect(result.statusLabel).toBeNull();
   });
 
-  it('computes each tax row amount from its own stored taxableBase, not the whole invoice taxableAmount', async () => {
+  it("rolls each item's already-computed tax1/tax2 slots up into one aggregate row per distinct rate", async () => {
     const invoiceWithTaxes = {
       ...baseInvoice,
       discountValue: 0,
       discountType: 'flat',
       items: [
-        { id: 'ii1', itemId: 'item1', description: 'A', cost: 30, qty: 1, sortOrder: 0 },
-        { id: 'ii2', itemId: 'item2', description: 'B', cost: 70, qty: 1, sortOrder: 1 },
-      ],
-      taxes: [
-        { id: 't1', name: 'Tax A', code: 'A', rate: 5, type: 'sales', taxableBase: 30 },
-        { id: 't2', name: 'Tax B', code: 'B', rate: 10, type: 'sales', taxableBase: 70 },
+        {
+          id: 'ii1',
+          itemId: 'item1',
+          description: 'A',
+          cost: 30,
+          qty: 1,
+          sortOrder: 0,
+          subtotal: 30,
+          tax1RateId: 't1',
+          tax1Name: 'Tax A',
+          tax1Rate: 5,
+          tax1Total: 1.5,
+          tax2RateId: null,
+          total: 31.5,
+        },
+        {
+          id: 'ii2',
+          itemId: 'item2',
+          description: 'B',
+          cost: 70,
+          qty: 1,
+          sortOrder: 1,
+          subtotal: 70,
+          tax1RateId: 't2',
+          tax1Name: 'Tax B',
+          tax1Rate: 10,
+          tax1Total: 7,
+          tax2RateId: null,
+          total: 77,
+        },
       ],
     };
     const service = Object.create(CustomerInvoiceService.prototype);
@@ -98,27 +156,50 @@ describe('CustomerInvoiceService.getInvoiceById', () => {
 
     const result = await service.getInvoiceById('i1', 'c1');
 
-    // Not 100 (whole taxableAmount) * each rate - each tax only covers its own base.
-    expect(result.taxes[0].amount).toBe(1.5); // 30 * 5%
-    expect(result.taxes[1].amount).toBe(7); // 70 * 10%
+    expect(result.taxes).toEqual([
+      { id: 't1', name: 'Tax A', rate: 5, amount: 1.5 },
+      { id: 't2', name: 'Tax B', rate: 10, amount: 7 },
+    ]);
     expect(result.taxTotal).toBe(8.5);
     expect(result.total).toBe(108.5);
   });
 
-  it('falls back to the whole invoice taxableAmount when a tax row has no stored taxableBase', async () => {
-    const invoiceWithSingleTax = {
+  it('sums contributions from multiple items sharing the same tax rate into a single aggregate row', async () => {
+    const invoiceWithSharedTax = {
       ...baseInvoice,
       discountValue: 0,
       discountType: 'flat',
-      items: [{ id: 'ii1', itemId: 'item1', description: 'A', cost: 100, qty: 1, sortOrder: 0 }],
-      taxes: [{ id: 't1', name: 'State Tax', code: 'ST', rate: 8, type: 'sales', taxableBase: null }],
+      items: [
+        {
+          id: 'ii1',
+          subtotal: 100,
+          cost: 100,
+          qty: 1,
+          tax1RateId: 't1',
+          tax1Name: 'State Tax',
+          tax1Rate: 8,
+          tax1Total: 8,
+          total: 108,
+        },
+        {
+          id: 'ii2',
+          subtotal: 50,
+          cost: 50,
+          qty: 1,
+          tax1RateId: 't1',
+          tax1Name: 'State Tax',
+          tax1Rate: 8,
+          tax1Total: 4,
+          total: 54,
+        },
+      ],
     };
     const service = Object.create(CustomerInvoiceService.prototype);
-    service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(invoiceWithSingleTax) };
+    service.customerInvoiceRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(invoiceWithSharedTax) };
 
     const result = await service.getInvoiceById('i1', 'c1');
 
-    expect(result.taxes[0].amount).toBe(8); // 100 (whole taxableAmount) * 8%
-    expect(result.taxTotal).toBe(8);
+    expect(result.taxes).toEqual([{ id: 't1', name: 'State Tax', rate: 8, amount: 12 }]);
+    expect(result.taxTotal).toBe(12);
   });
 });

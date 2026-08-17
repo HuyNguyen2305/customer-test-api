@@ -16,14 +16,14 @@ function buildService({
     deleteByBookingId: jest.fn().mockResolvedValue(undefined),
     bulkCreate: jest.fn().mockResolvedValue(undefined),
   };
-  service.jobTodoListRepository = {
+  service.todoListRepository = {
     findByBookingId: jest.fn((id) => Promise.resolve(jobTodoListsByBooking[id] || [])),
     deleteByBookingId: jest.fn().mockResolvedValue(undefined),
     create: jest.fn().mockResolvedValue({ id: 'new-jtl' }),
+    findByServiceId: jest.fn((id) => Promise.resolve(todoListsByService[id] || [])),
   };
-  service.jobTodoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
+  service.todoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
   service.materialRepository = { findByServiceId: jest.fn((id) => Promise.resolve(materialsByService[id] || [])) };
-  service.todoListRepository = { findByServiceId: jest.fn((id) => Promise.resolve(todoListsByService[id] || [])) };
   return service;
 }
 
@@ -57,7 +57,7 @@ describe('JobSyncService.syncActiveJobs', () => {
     const service = buildService({
       bookings: [booking],
       jobMaterialsByBooking: { b1: [{ id: 'jm1', isCustomized: true }] },
-      jobTodoListsByBooking: { b1: [{ id: 'jtl1', JobTodos: [{ id: 'jt1', isCustomized: true }] }] },
+      jobTodoListsByBooking: { b1: [{ id: 'jtl1', Todos: [{ id: 'jt1', isCustomized: true }] }] },
       materialsByService: { s1: [{ materialId: 'm1', unitsValue: 1, sortOrder: 0 }] },
     });
 
@@ -74,13 +74,13 @@ describe('JobSyncService.syncActiveJobs', () => {
     const service = buildService({
       bookings: [booking],
       jobMaterialsByBooking: { b1: [{ id: 'jm1', isCustomized: true }] },
-      jobTodoListsByBooking: { b1: [{ id: 'jtl1', JobTodos: [{ id: 'jt1', isCustomized: false }] }] },
+      jobTodoListsByBooking: { b1: [{ id: 'jtl1', Todos: [{ id: 'jt1', isCustomized: false }] }] },
       todoListsByService: { s1: [{ name: 'Prep', sortOrder: 0, Todos: [] }] },
     });
 
     const result = await service.syncActiveJobs();
 
-    expect(service.jobTodoListRepository.deleteByBookingId).toHaveBeenCalledWith('b1');
+    expect(service.todoListRepository.deleteByBookingId).toHaveBeenCalledWith('b1');
     expect(result.updated).toContain('b1');
     expect(result.skipped).toContain('b1');
   });

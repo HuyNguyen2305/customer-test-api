@@ -15,7 +15,10 @@ describe('BalanceRepository.getBalance', () => {
     );
 
     expect(model.schema).toHaveBeenCalledWith('tenant_x');
-    expect(scopedModel.findOne).toHaveBeenCalledWith({ where: { customerId: 'c1' } });
+    expect(scopedModel.findOne).toHaveBeenCalledWith({
+      where: { customerId: 'c1' },
+      attributes: ['amount', 'currency'],
+    });
     expect(result).toEqual({ customerId: 'c1', amount: 10 });
   });
 
@@ -27,7 +30,10 @@ describe('BalanceRepository.getBalance', () => {
     const result = await repository.getBalance('missing');
 
     expect(model.schema).not.toHaveBeenCalled();
-    expect(model.findOne).toHaveBeenCalledWith({ where: { customerId: 'missing' } });
+    expect(model.findOne).toHaveBeenCalledWith({
+      where: { customerId: 'missing' },
+      attributes: ['amount', 'currency'],
+    });
     expect(result).toBeNull();
   });
 });

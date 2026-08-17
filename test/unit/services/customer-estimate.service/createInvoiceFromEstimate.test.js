@@ -1,5 +1,12 @@
 import { jest } from '@jest/globals';
 
+const FAKE_TRANSACTION = { id: 'fake-transaction' };
+const transactionMock = jest.fn((fn) => fn(FAKE_TRANSACTION));
+
+jest.unstable_mockModule('#common/sequelize.js', () => ({
+  sequelize: { transaction: transactionMock },
+}));
+
 const { default: CustomerEstimateService } = await import('#service/customer-estimate.service.js');
 const { NotFoundError } = await import('#configs/error.js');
 
@@ -11,11 +18,17 @@ const baseEstimate = {
   items: [],
 };
 
+function buildService() {
+  const service = Object.create(CustomerEstimateService.prototype);
+  service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  return service;
+}
+
 describe('CustomerEstimateService.createInvoiceFromEstimate', () => {
   it('delegates to invoiceGenerationService and returns the created invoice DTO', async () => {
     const invoice = { id: 'inv1' };
     const invoiceDto = { id: 'inv1', status: 'draft' };
-    const service = Object.create(CustomerEstimateService.prototype);
+    const service = buildService();
     service.customerEstimateRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(baseEstimate) };
     service.invoiceGenerationService = { generateInvoiceFromEstimate: jest.fn().mockResolvedValue(invoice) };
     service.customerInvoiceService = { getInvoiceById: jest.fn().mockResolvedValue(invoiceDto) };
@@ -29,7 +42,7 @@ describe('CustomerEstimateService.createInvoiceFromEstimate', () => {
   });
 
   it('throws NotFoundError when the estimate belongs to another customer', async () => {
-    const service = Object.create(CustomerEstimateService.prototype);
+    const service = buildService();
     service.customerEstimateRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(null) };
     service.invoiceGenerationService = { generateInvoiceFromEstimate: jest.fn() };
     service.customerInvoiceService = { getInvoiceById: jest.fn() };
@@ -41,7 +54,7 @@ describe('CustomerEstimateService.createInvoiceFromEstimate', () => {
   it.each(['draft', 'declined', 'expired'])(
     'throws NotFoundError when the estimate status is %s (not eligible to invoice)',
     async (status) => {
-      const service = Object.create(CustomerEstimateService.prototype);
+      const service = buildService();
       service.customerEstimateRepository = {
         findByIdForCustomer: jest.fn().mockResolvedValue({ ...baseEstimate, status }),
       };
@@ -55,7 +68,7 @@ describe('CustomerEstimateService.createInvoiceFromEstimate', () => {
 
   it('allows invoicing an already-approved estimate', async () => {
     const invoice = { id: 'inv1' };
-    const service = Object.create(CustomerEstimateService.prototype);
+    const service = buildService();
     service.customerEstimateRepository = {
       findByIdForCustomer: jest.fn().mockResolvedValue({ ...baseEstimate, status: 'approved' }),
     };

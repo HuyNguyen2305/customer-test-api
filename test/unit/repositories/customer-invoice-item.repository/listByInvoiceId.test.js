@@ -17,6 +17,7 @@ describe('CustomerInvoiceItemRepository.listByInvoiceId', () => {
     expect(scopedModel.findAll).toHaveBeenCalledWith({
       where: { customerInvoiceId: 'i1' },
       order: [['sortOrder', 'ASC']],
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
     });
     expect(result).toEqual([{ id: 'ii1' }]);
   });

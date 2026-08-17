@@ -20,6 +20,7 @@ describe('AddressRepository.listByCustomerId', () => {
         ['isDefault', 'DESC'],
         ['createdAt', 'ASC'],
       ],
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
     });
     expect(result).toEqual([{ id: 'a1' }]);
   });

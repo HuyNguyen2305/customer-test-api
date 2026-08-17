@@ -1,20 +1,12 @@
 import { NotFoundError } from '#configs/error.js';
 
 class JobSnapshotService {
-  constructor({
-    bookingRepository,
-    todoListRepository,
-    materialRepository,
-    jobMaterialRepository,
-    jobTodoListRepository,
-    jobTodoRepository,
-  }) {
+  constructor({ bookingRepository, todoListRepository, materialRepository, jobMaterialRepository, todoRepository }) {
     this.bookingRepository = bookingRepository;
     this.todoListRepository = todoListRepository;
     this.materialRepository = materialRepository;
     this.jobMaterialRepository = jobMaterialRepository;
-    this.jobTodoListRepository = jobTodoListRepository;
-    this.jobTodoRepository = jobTodoRepository;
+    this.todoRepository = todoRepository;
   }
 
   async createSnapshotForBooking(bookingId) {
@@ -43,7 +35,7 @@ class JobSnapshotService {
     }
 
     for (const todoList of todoLists) {
-      const jobTodoList = await this.jobTodoListRepository.create({
+      const jobTodoList = await this.todoListRepository.create({
         bookingId,
         name: todoList.name,
         sortOrder: todoList.sortOrder,
@@ -51,9 +43,9 @@ class JobSnapshotService {
 
       const todos = todoList.Todos || [];
       if (todos.length) {
-        await this.jobTodoRepository.bulkCreate(
+        await this.todoRepository.bulkCreate(
           todos.map((todo) => ({
-            jobTodoListId: jobTodoList.id,
+            todoListId: jobTodoList.id,
             text: todo.text,
             sortOrder: todo.sortOrder,
             completed: false,

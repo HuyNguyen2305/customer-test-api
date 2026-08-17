@@ -5,7 +5,7 @@ const { NotFoundError } = await import('#configs/error.js');
 
 function buildService({ affectedCount = 1, updated } = {}) {
   const service = Object.create(JobTodoService.prototype);
-  service.jobTodoRepository = {
+  service.todoRepository = {
     updateOne: jest.fn().mockResolvedValue([affectedCount]),
     findByPk: jest.fn().mockResolvedValue(updated),
   };
@@ -19,7 +19,7 @@ describe('JobTodoService.updateJobTodo', () => {
 
     const result = await service.updateJobTodo('jt1', { text: 'New text' });
 
-    expect(service.jobTodoRepository.updateOne).toHaveBeenCalledWith('jt1', { text: 'New text' });
+    expect(service.todoRepository.updateOne).toHaveBeenCalledWith('jt1', { text: 'New text' });
     expect(result).toBe(updated);
   });
 

@@ -20,6 +20,22 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      // Only meaningful on job-instance rows (todoListId -> a bookingId-owned
+      // TodoList) - always false/null on template rows.
+      completed: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      completedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      isCustomized: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
       tableName: 'todos',

@@ -1,33 +1,54 @@
 import { jest } from '@jest/globals';
 
+const FAKE_TRANSACTION = { id: 'fake-transaction' };
+const transactionMock = jest.fn((fn) => fn(FAKE_TRANSACTION));
+
+jest.unstable_mockModule('#common/sequelize.js', () => ({
+  sequelize: { transaction: transactionMock },
+}));
+
 const { default: CustomerInvoiceItemService } = await import('#service/customer-invoice-item.service.js');
 const { NotFoundError, ConflictError } = await import('#configs/error.js');
+
+function buildInvoiceItemRepository({ updated, listed = [], final } = {}) {
+  return {
+    updateItem: jest.fn().mockResolvedValue(updated),
+    listByInvoiceId: jest.fn().mockResolvedValue(listed),
+    updateMany: jest.fn().mockResolvedValue(undefined),
+    findByPk: jest.fn().mockResolvedValue(final ?? updated),
+  };
+}
 
 describe('CustomerInvoiceItemService.updateItem', () => {
   it('updates a line item on a draft invoice owned by the customer', async () => {
     const updated = { id: 'ii1', qty: 3 };
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
+      findSummaryByIdForCustomer: jest
+        .fn()
+        .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = { updateItem: jest.fn().mockResolvedValue(updated) };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated, final: updated });
 
     const result = await service.updateItem('c1', 'i1', 'ii1', { qty: 3 });
 
-    expect(service.customerInvoiceItemRepository.updateItem).toHaveBeenCalledWith('ii1', 'i1', {
-      description: undefined,
-      qty: 3,
-      sortOrder: undefined,
-    });
-    expect(result).toBe(updated);
+    expect(service.customerInvoiceItemRepository.updateItem).toHaveBeenCalledWith(
+      'ii1',
+      'i1',
+      { description: undefined, qty: 3, sortOrder: undefined },
+      { transaction: FAKE_TRANSACTION },
+    );
+    expect(result).toMatchObject({ id: 'ii1', qty: 3 });
   });
 
   it('never forwards a cost field to the repository, even if present on the raw input', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
+      findSummaryByIdForCustomer: jest
+        .fn()
+        .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = { updateItem: jest.fn().mockResolvedValue({ id: 'ii1' }) };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated: { id: 'ii1' } });
 
     await service.updateItem('c1', 'i1', 'ii1', { qty: 2, cost: -9999 });
 
@@ -35,12 +56,34 @@ describe('CustomerInvoiceItemService.updateItem', () => {
     expect(calledData).not.toHaveProperty('cost');
   });
 
+  it('recomputes every sibling item on the invoice after updating, since the changed subtotal shifts the shared discount ratio', async () => {
+    const updated = { id: 'ii1', qty: 2 };
+    const service = Object.create(CustomerInvoiceItemService.prototype);
+    service.customerInvoiceRepository = {
+      findSummaryByIdForCustomer: jest
+        .fn()
+        .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 20 }),
+    };
+    const sibling = { id: 'ii2', cost: 30, qty: 1, tax1Rate: 5 };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({
+      updated,
+      listed: [{ id: 'ii1', cost: 50, qty: 2, tax1Rate: null }, sibling],
+    });
+
+    await service.updateItem('c1', 'i1', 'ii1', { qty: 2 });
+
+    expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('i1', {
+      transaction: FAKE_TRANSACTION,
+    });
+    expect(service.customerInvoiceItemRepository.updateMany).toHaveBeenCalled();
+  });
+
   it('throws ConflictError when the invoice is not a draft', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'paid' }),
+      findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'paid' }),
     };
-    service.customerInvoiceItemRepository = { updateItem: jest.fn() };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository();
 
     await expect(service.updateItem('c1', 'i1', 'ii1', { qty: 2 })).rejects.toThrow(ConflictError);
     expect(service.customerInvoiceItemRepository.updateItem).not.toHaveBeenCalled();
@@ -49,9 +92,9 @@ describe('CustomerInvoiceItemService.updateItem', () => {
   it('throws NotFoundError when the item does not exist on that invoice', async () => {
     const service = Object.create(CustomerInvoiceItemService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
+      findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
     };
-    service.customerInvoiceItemRepository = { updateItem: jest.fn().mockResolvedValue(null) };
+    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated: null });
 
     await expect(service.updateItem('c1', 'i1', 'missing-item', { qty: 2 })).rejects.toThrow(NotFoundError);
   });

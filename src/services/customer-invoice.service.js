@@ -1,49 +1,10 @@
 import { NotFoundError } from '#configs/error.js';
+import { computeEntityTotals, toNumberOrNull } from './billing-calculation.util.js';
 
 // Only 'sent' has a portal-facing label today: that's the status the client
 // portal's "Pay My Balance" screen groups under "Open" once an admin sends
 // the invoice. Other statuses aren't part of this feature's criteria.
 const STATUS_LABELS = { sent: 'Open' };
-
-// Derived from the current items + frozen tax rows every time an invoice is
-// read — nothing here is persisted, so there's no stored total that can drift
-// out of sync with the underlying items/taxes.
-function computeTotals(invoice) {
-  const items = invoice.items ?? [];
-  const taxes = invoice.taxes ?? [];
-
-  const subtotal = items.reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
-  const discountAmount =
-    invoice.discountType === 'flat' ? Number(invoice.discountValue) : subtotal * (Number(invoice.discountValue) / 100);
-  const taxableAmount = subtotal - discountAmount;
-
-  // A stored taxableBase (set by attachEstimateTaxes for estimate-sourced
-  // invoices with per-item tax rates) means this rate only applied to a
-  // subset of items; fall back to the invoice-wide taxableAmount when
-  // absent — that's attachAutoTax's single-rate path, where "apply the rate
-  // to the whole taxable amount" is already correct.
-  const taxBreakdown = taxes.map((tax) => {
-    const base = tax.taxableBase != null ? Number(tax.taxableBase) : taxableAmount;
-    return {
-      id: tax.id,
-      name: tax.name,
-      code: tax.code,
-      rate: tax.rate,
-      type: tax.type,
-      amount: base * (Number(tax.rate) / 100),
-    };
-  });
-  const taxTotal = taxBreakdown.reduce((sum, tax) => sum + tax.amount, 0);
-
-  return {
-    subtotal,
-    discountAmount,
-    taxableAmount,
-    taxes: taxBreakdown,
-    taxTotal,
-    total: taxableAmount + taxTotal,
-  };
-}
 
 export function toInvoiceData(invoice) {
   return {
@@ -67,7 +28,7 @@ export function toInvoiceData(invoice) {
     addressState: invoice.addressState,
     addressZip: invoice.addressZip,
     addressCountry: invoice.addressCountry,
-    ...computeTotals(invoice),
+    ...computeEntityTotals(invoice),
     ...(invoice.items && {
       items: invoice.items.map((item) => ({
         id: item.id,
@@ -76,6 +37,16 @@ export function toInvoiceData(invoice) {
         cost: item.cost,
         qty: item.qty,
         sortOrder: item.sortOrder,
+        subtotal: toNumberOrNull(item.subtotal),
+        tax1RateId: item.tax1RateId,
+        tax1Name: item.tax1Name,
+        tax1Rate: toNumberOrNull(item.tax1Rate),
+        tax1Total: toNumberOrNull(item.tax1Total),
+        tax2RateId: item.tax2RateId,
+        tax2Name: item.tax2Name,
+        tax2Rate: toNumberOrNull(item.tax2Rate),
+        tax2Total: toNumberOrNull(item.tax2Total),
+        total: toNumberOrNull(item.total),
       })),
     }),
   };

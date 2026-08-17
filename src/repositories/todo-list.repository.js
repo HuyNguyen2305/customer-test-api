@@ -13,6 +13,17 @@ class TodoListRepository extends BaseRepository {
       order: [['sortOrder', 'ASC']],
     });
   }
+
+  findByBookingId(bookingId) {
+    return this.findAll({
+      where: { bookingId },
+      include: [{ model: this.todoModel }],
+    });
+  }
+
+  deleteByBookingId(bookingId) {
+    return this.destroy({ where: { bookingId } });
+  }
 }
 
 export default TodoListRepository;

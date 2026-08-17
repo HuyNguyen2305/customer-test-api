@@ -19,7 +19,10 @@ describe('CustomerRepository.findByIdWithAddresses', () => {
     );
 
     expect(addressModel.schema).toHaveBeenCalledWith('tenant_x');
-    expect(scopedModel.findByPk).toHaveBeenCalledWith('c1', { include: [{ model: scopedAddressModel }] });
+    expect(scopedModel.findByPk).toHaveBeenCalledWith('c1', {
+      attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'],
+      include: [{ model: scopedAddressModel, attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] } }],
+    });
     expect(result).toBe(customer);
   });
 });

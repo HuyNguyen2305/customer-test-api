@@ -29,11 +29,11 @@ describe('EstimatePdfService.getEstimatePdf', () => {
     const buffer = Buffer.from('%PDF-fake');
     buildEstimatePdfMock.mockResolvedValue(buffer);
     const service = Object.create(EstimatePdfService.prototype);
-    service.customerEstimateRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(baseEstimate) };
+    service.customerEstimateRepository = { findByIdForPdf: jest.fn().mockResolvedValue(baseEstimate) };
 
     const result = await service.getEstimatePdf('e1', 'c1');
 
-    expect(service.customerEstimateRepository.findByIdForCustomer).toHaveBeenCalledWith('e1', 'c1');
+    expect(service.customerEstimateRepository.findByIdForPdf).toHaveBeenCalledWith('e1', 'c1');
     expect(buildEstimatePdfMock).toHaveBeenCalledTimes(1);
     const [estimateData, options] = buildEstimatePdfMock.mock.calls[0];
     expect(estimateData.id).toBe('e1');
@@ -44,7 +44,7 @@ describe('EstimatePdfService.getEstimatePdf', () => {
 
   it('throws NotFoundError when the estimate belongs to another customer', async () => {
     const service = Object.create(EstimatePdfService.prototype);
-    service.customerEstimateRepository = { findByIdForCustomer: jest.fn().mockResolvedValue(null) };
+    service.customerEstimateRepository = { findByIdForPdf: jest.fn().mockResolvedValue(null) };
 
     await expect(service.getEstimatePdf('e1', 'someone-else')).rejects.toThrow(NotFoundError);
     expect(buildEstimatePdfMock).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe('EstimatePdfService.getEstimatePdf', () => {
   it.each(['draft', 'declined', 'expired'])('throws NotFoundError when the estimate status is %s', async (status) => {
     const service = Object.create(EstimatePdfService.prototype);
     service.customerEstimateRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue({ ...baseEstimate, status }),
+      findByIdForPdf: jest.fn().mockResolvedValue({ ...baseEstimate, status }),
     };
 
     await expect(service.getEstimatePdf('e1', 'c1')).rejects.toThrow(NotFoundError);

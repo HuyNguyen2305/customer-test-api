@@ -1,40 +1,9 @@
 import { NotFoundError } from '#configs/error.js';
+import { sequelize } from '#common/sequelize.js';
+import { computeEntityTotals, recomputeItems, toNumberOrNull } from './billing-calculation.util.js';
 
 const PORTAL_VISIBLE_STATUSES = ['sent', 'approved'];
 const STATUS_LABELS = { sent: 'Open', approved: 'Accepted' };
-
-// Derived from the current items every time an estimate is read, mirroring
-// CustomerInvoiceService.computeTotals - nothing here is persisted. Tax is
-// per-item (CustomerEstimateItem.taxRateId -> TaxRate.rate), not a separate
-// junction table like invoices, so it only appears when an item's row was
-// loaded with its TaxRate association.
-function computeEstimateTotals(estimate) {
-  const items = estimate.items ?? [];
-
-  const subtotal = items.reduce((sum, item) => sum + Number(item.cost) * item.qty, 0);
-  const discountAmount =
-    estimate.discountType === 'flat'
-      ? Number(estimate.discountValue)
-      : subtotal * (Number(estimate.discountValue) / 100);
-  const taxableAmount = subtotal - discountAmount;
-  // Tax each item on its own share of the taxable (post-discount) amount,
-  // not its raw pre-discount cost — mirrors the taxableBase logic in
-  // invoice-generation.service.js's attachEstimateTaxes, so a converted
-  // invoice's tax matches what the customer saw on the estimate.
-  const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-  const taxTotal = items.reduce((sum, item) => {
-    const itemTaxableBase = Number(item.cost) * item.qty * (1 - discountRatio);
-    return sum + itemTaxableBase * (Number(item.TaxRate?.rate ?? 0) / 100);
-  }, 0);
-
-  return {
-    subtotal,
-    discountAmount,
-    taxableAmount,
-    taxTotal,
-    total: taxableAmount + taxTotal,
-  };
-}
 
 export function toEstimateData(estimate) {
   return {
@@ -52,7 +21,7 @@ export function toEstimateData(estimate) {
     notesText: estimate.notesText,
     status: estimate.status,
     statusLabel: STATUS_LABELS[estimate.status],
-    ...computeEstimateTotals(estimate),
+    ...computeEntityTotals(estimate),
     ...(estimate.items && {
       items: estimate.items.map((item) => ({
         id: item.id,
@@ -60,19 +29,59 @@ export function toEstimateData(estimate) {
         itemName: item.Item?.name ?? null,
         description: item.description,
         cost: item.cost,
-        taxRateId: item.taxRateId,
         qty: item.qty,
         sortOrder: item.sortOrder,
+        subtotal: toNumberOrNull(item.subtotal),
+        tax1RateId: item.tax1RateId,
+        tax1Name: item.tax1Name,
+        tax1Rate: toNumberOrNull(item.tax1Rate),
+        tax1Total: toNumberOrNull(item.tax1Total),
+        tax2RateId: item.tax2RateId,
+        tax2Name: item.tax2Name,
+        tax2Rate: toNumberOrNull(item.tax2Rate),
+        tax2Total: toNumberOrNull(item.tax2Total),
+        total: toNumberOrNull(item.total),
       })),
     }),
   };
 }
 
 class CustomerEstimateService {
-  constructor({ customerEstimateRepository, invoiceGenerationService, customerInvoiceService }) {
+  constructor({
+    customerEstimateRepository,
+    customerEstimateItemRepository,
+    invoiceGenerationService,
+    customerInvoiceService,
+  }) {
     this.customerEstimateRepository = customerEstimateRepository;
+    this.customerEstimateItemRepository = customerEstimateItemRepository;
     this.invoiceGenerationService = invoiceGenerationService;
     this.customerInvoiceService = customerInvoiceService;
+  }
+
+  // Estimates have no write endpoints in this app - items are created
+  // elsewhere, so the only way to keep each item's persisted subtotal/tax/
+  // total columns from going stale is to recompute and overwrite them on
+  // every read. Snapshots tax1Name/tax1Rate off the preloaded Tax1Rate/
+  // Tax2Rate associations, then mutates estimate.items in place so the
+  // caller's response reflects the fresh computation without a re-fetch.
+  async refreshItemCache(estimate) {
+    const items = estimate.items ?? [];
+    for (const item of items) {
+      item.tax1Name = item.Tax1Rate?.name ?? null;
+      item.tax1Rate = item.Tax1Rate?.rate ?? null;
+      item.tax2Name = item.Tax2Rate?.name ?? null;
+      item.tax2Rate = item.Tax2Rate?.rate ?? null;
+    }
+
+    const patches = recomputeItems(items, estimate);
+    await sequelize.transaction((transaction) =>
+      this.customerEstimateItemRepository.updateMany(patches, { transaction }),
+    );
+
+    const patchById = new Map(patches.map((patch) => [patch.id, patch]));
+    for (const item of items) Object.assign(item, patchById.get(item.id));
+    return estimate;
   }
 
   async listEstimates(customerId, { page = 1, pageSize = 20, addressId } = {}) {
@@ -83,6 +92,7 @@ class CustomerEstimateService {
       addressId,
       statuses: PORTAL_VISIBLE_STATUSES,
     });
+    await Promise.all(rows.map((estimate) => this.refreshItemCache(estimate)));
     return {
       estimates: rows.map(toEstimateData),
       pagination: { page, pageSize, total: count, totalPages: Math.ceil(count / pageSize) },
@@ -92,12 +102,14 @@ class CustomerEstimateService {
   async getEstimateById(id, customerId) {
     const estimate = await this.customerEstimateRepository.findByIdForCustomer(id, customerId);
     if (!estimate || !PORTAL_VISIBLE_STATUSES.includes(estimate.status)) throw new NotFoundError('Estimate not found');
+    await this.refreshItemCache(estimate);
     return toEstimateData(estimate);
   }
 
   async createInvoiceFromEstimate(id, customerId) {
     const estimate = await this.customerEstimateRepository.findByIdForCustomer(id, customerId);
     if (!estimate || !PORTAL_VISIBLE_STATUSES.includes(estimate.status)) throw new NotFoundError('Estimate not found');
+    await this.refreshItemCache(estimate);
 
     const invoice = await this.invoiceGenerationService.generateInvoiceFromEstimate(estimate, customerId);
     return this.customerInvoiceService.getInvoiceById(invoice.id, customerId);

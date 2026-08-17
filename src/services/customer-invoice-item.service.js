@@ -1,4 +1,31 @@
+import { sequelize } from '#common/sequelize.js';
 import { ConflictError, NotFoundError } from '#configs/error.js';
+import { recomputeItems, toNumberOrNull } from './billing-calculation.util.js';
+
+// Postgres DECIMAL columns come back from Sequelize as strings; these
+// endpoints return a raw item row straight to the client (no DTO mapper like
+// toInvoiceData in between), so the numeric coercion has to happen here.
+function toLineItemData(item) {
+  return {
+    id: item.id,
+    customerInvoiceId: item.customerInvoiceId,
+    itemId: item.itemId,
+    description: item.description,
+    cost: toNumberOrNull(item.cost),
+    qty: item.qty,
+    sortOrder: item.sortOrder,
+    subtotal: toNumberOrNull(item.subtotal),
+    tax1RateId: item.tax1RateId,
+    tax1Name: item.tax1Name,
+    tax1Rate: toNumberOrNull(item.tax1Rate),
+    tax1Total: toNumberOrNull(item.tax1Total),
+    tax2RateId: item.tax2RateId,
+    tax2Name: item.tax2Name,
+    tax2Rate: toNumberOrNull(item.tax2Rate),
+    tax2Total: toNumberOrNull(item.tax2Total),
+    total: toNumberOrNull(item.total),
+  };
+}
 
 class CustomerInvoiceItemService {
   constructor({ customerInvoiceItemRepository, customerInvoiceRepository, itemRepository }) {
@@ -8,7 +35,7 @@ class CustomerInvoiceItemService {
   }
 
   async requireOwnedDraftInvoice(customerId, invoiceId) {
-    const invoice = await this.customerInvoiceRepository.findByIdForCustomer(invoiceId, customerId);
+    const invoice = await this.customerInvoiceRepository.findSummaryByIdForCustomer(invoiceId, customerId);
     if (!invoice) throw new NotFoundError('Invoice not found');
     return invoice;
   }
@@ -23,46 +50,70 @@ class CustomerInvoiceItemService {
 
   async listItems(customerId, invoiceId) {
     await this.requireOwnedDraftInvoice(customerId, invoiceId);
-    return this.customerInvoiceItemRepository.listByInvoiceId(invoiceId);
+    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoiceId);
+    return items.map(toLineItemData);
+  }
+
+  // Every item on the invoice shares one discount ratio (it's derived from
+  // their combined subtotal), so any add/update/remove shifts every
+  // sibling's taxable base - refetch the current full set inside the same
+  // transaction and rewrite each one's subtotal/tax/total columns.
+  async recomputeInvoiceItems(invoice, transaction) {
+    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, { transaction });
+    const patches = recomputeItems(items, invoice);
+    await this.customerInvoiceItemRepository.updateMany(patches, { transaction });
   }
 
   // cost is never accepted from the caller - a customer chooses which item and
   // how many, never what it costs. It's always derived from the Item catalog's
-  // own price, so a customer can't set an arbitrary (or negative) price on
-  // their own invoice by supplying a cost field.
+  // own price. No tax source exists for a customer-added item either (the Item
+  // catalog carries no default tax rate), so tax1/tax2 stay null on it - but
+  // the recompute still runs, because this item's subtotal shifts every
+  // sibling's discount-adjusted taxable base even though it has no tax of its own.
   async addItem(customerId, invoiceId, { itemId, description, qty, sortOrder }) {
-    await this.requireEditableInvoice(customerId, invoiceId);
+    const invoice = await this.requireEditableInvoice(customerId, invoiceId);
     const item = await this.itemRepository.findByPk(itemId);
     if (!item) throw new NotFoundError('Item not found');
 
-    return this.customerInvoiceItemRepository.createItem({
-      customerInvoiceId: invoiceId,
-      itemId,
-      description,
-      cost: item.defaultCost,
-      qty,
-      sortOrder,
+    return sequelize.transaction(async (transaction) => {
+      const created = await this.customerInvoiceItemRepository.createItem(
+        { customerInvoiceId: invoiceId, itemId, description, cost: item.defaultCost, qty, sortOrder },
+        { transaction },
+      );
+      await this.recomputeInvoiceItems(invoice, transaction);
+      const final = await this.customerInvoiceItemRepository.findByPk(created.id, { transaction });
+      return toLineItemData(final);
     });
   }
 
-  // Only description/qty/sortOrder are ever writable here - cost is
-  // intentionally excluded from the destructure below even if a caller's raw
-  // data object happens to include one.
+  // Only description/qty/sortOrder are ever writable here - cost and the tax
+  // slots are intentionally excluded from the destructure below even if a
+  // caller's raw data object happens to include them.
   async updateItem(customerId, invoiceId, itemId, { description, qty, sortOrder }) {
-    await this.requireEditableInvoice(customerId, invoiceId);
-    const item = await this.customerInvoiceItemRepository.updateItem(itemId, invoiceId, {
-      description,
-      qty,
-      sortOrder,
+    const invoice = await this.requireEditableInvoice(customerId, invoiceId);
+
+    return sequelize.transaction(async (transaction) => {
+      const updated = await this.customerInvoiceItemRepository.updateItem(
+        itemId,
+        invoiceId,
+        { description, qty, sortOrder },
+        { transaction },
+      );
+      if (!updated) throw new NotFoundError('Line item not found');
+      await this.recomputeInvoiceItems(invoice, transaction);
+      const final = await this.customerInvoiceItemRepository.findByPk(itemId, { transaction });
+      return toLineItemData(final);
     });
-    if (!item) throw new NotFoundError('Line item not found');
-    return item;
   }
 
   async removeItem(customerId, invoiceId, itemId) {
-    await this.requireEditableInvoice(customerId, invoiceId);
-    const deleted = await this.customerInvoiceItemRepository.deleteItem(itemId, invoiceId);
-    if (!deleted) throw new NotFoundError('Line item not found');
+    const invoice = await this.requireEditableInvoice(customerId, invoiceId);
+
+    return sequelize.transaction(async (transaction) => {
+      const deleted = await this.customerInvoiceItemRepository.deleteItem(itemId, invoiceId, { transaction });
+      if (!deleted) throw new NotFoundError('Line item not found');
+      await this.recomputeInvoiceItems(invoice, transaction);
+    });
   }
 }
 

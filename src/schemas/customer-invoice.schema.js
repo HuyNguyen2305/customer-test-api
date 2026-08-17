@@ -7,6 +7,16 @@ const invoiceItemDataSchema = {
     cost: { type: 'number' },
     qty: { type: 'integer' },
     sortOrder: { type: 'integer' },
+    subtotal: { type: ['number', 'null'] },
+    tax1RateId: { type: ['string', 'null'] },
+    tax1Name: { type: ['string', 'null'] },
+    tax1Rate: { type: ['number', 'null'] },
+    tax1Total: { type: ['number', 'null'] },
+    tax2RateId: { type: ['string', 'null'] },
+    tax2Name: { type: ['string', 'null'] },
+    tax2Rate: { type: ['number', 'null'] },
+    tax2Total: { type: ['number', 'null'] },
+    total: { type: ['number', 'null'] },
   },
 };
 
@@ -14,10 +24,8 @@ const invoiceTaxDataSchema = {
   type: 'object',
   properties: {
     id: { type: 'string' },
-    name: { type: 'string' },
-    code: { type: ['string', 'null'] },
-    rate: { type: 'number' },
-    type: { type: ['string', 'null'] },
+    name: { type: ['string', 'null'] },
+    rate: { type: ['number', 'null'] },
     amount: { type: 'number' },
   },
 };

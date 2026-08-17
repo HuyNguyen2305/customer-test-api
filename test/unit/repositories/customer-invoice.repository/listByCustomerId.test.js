@@ -9,13 +9,9 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const scopedModel = { findAndCountAll: jest.fn().mockResolvedValue({ rows: [{ id: 'i1' }], count: 1 }) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
-    const scopedAddressModel = {};
-    const scopedTaxModel = {};
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue(scopedAddressModel) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue(scopedTaxModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0 }),
@@ -27,11 +23,9 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
       offset: 0,
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['updatedAt'] },
-      include: [
-        { model: scopedItemModel, as: 'items' },
-        { model: scopedAddressModel, as: 'address' },
-        { model: scopedTaxModel, as: 'taxes' },
-      ],
+      // No 'address' join - toInvoiceData reads denormalized addressLabel/
+      // addressLine1/etc. columns already on the row instead.
+      include: [{ model: scopedItemModel, as: 'items' }],
     });
     expect(result).toEqual({ rows: [{ id: 'i1' }], count: 1 });
   });
@@ -42,8 +36,6 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, addressId: 'a1', status: 'sent' }),
@@ -59,8 +51,6 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, statusOrder: 'asc' }),
@@ -69,7 +59,10 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const [callArgs] = scopedModel.findAndCountAll.mock.calls[0];
     const expectedCase =
       "CASE status WHEN 'draft' THEN 0 WHEN 'sent' THEN 1 WHEN 'void' THEN 2 WHEN 'write_off' THEN 3 WHEN 'paid' THEN 4 END";
-    expect(callArgs.order).toEqual([[sequelize.literal(expectedCase), 'ASC'], ['createdAt', 'DESC']]);
+    expect(callArgs.order).toEqual([
+      [sequelize.literal(expectedCase), 'ASC'],
+      ['createdAt', 'DESC'],
+    ]);
   });
 
   it('orders descending when statusOrder=desc', async () => {
@@ -78,8 +71,6 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, statusOrder: 'desc' }),
@@ -95,8 +86,6 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0 }),

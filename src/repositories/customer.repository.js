@@ -12,8 +12,18 @@ class CustomerRepository extends BaseRepository {
     return this.findByPk(id);
   }
 
+  // Only used by the profile endpoint - restricted so passwordHash and other
+  // sensitive/unused columns never leave the DB layer for this call.
   findByIdWithAddresses(id) {
-    return this.findByPk(id, { include: [{ model: this.scopeModel(this.addressModel) }] });
+    return this.findByPk(id, {
+      attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'],
+      include: [
+        {
+          model: this.scopeModel(this.addressModel),
+          attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
+        },
+      ],
+    });
   }
 
   setGatewayCustomerId(id, gateway, gatewayCustomerId) {

@@ -1,18 +1,10 @@
 class JobSyncService {
-  constructor({
-    bookingRepository,
-    materialRepository,
-    todoListRepository,
-    jobMaterialRepository,
-    jobTodoListRepository,
-    jobTodoRepository,
-  }) {
+  constructor({ bookingRepository, materialRepository, todoListRepository, jobMaterialRepository, todoRepository }) {
     this.bookingRepository = bookingRepository;
     this.materialRepository = materialRepository;
     this.todoListRepository = todoListRepository;
     this.jobMaterialRepository = jobMaterialRepository;
-    this.jobTodoListRepository = jobTodoListRepository;
-    this.jobTodoRepository = jobTodoRepository;
+    this.todoRepository = todoRepository;
   }
 
   async syncActiveJobs() {
@@ -23,13 +15,13 @@ class JobSyncService {
     for (const booking of bookings) {
       const [jobMaterials, jobTodoLists, materials, todoLists] = await Promise.all([
         this.jobMaterialRepository.findByBookingId(booking.id),
-        this.jobTodoListRepository.findByBookingId(booking.id),
+        this.todoListRepository.findByBookingId(booking.id),
         this.materialRepository.findByServiceId(booking.serviceId),
         this.todoListRepository.findByServiceId(booking.serviceId),
       ]);
 
       const customizedMaterials = jobMaterials.filter((row) => row.isCustomized);
-      const jobTodos = jobTodoLists.flatMap((list) => list.JobTodos || []);
+      const jobTodos = jobTodoLists.flatMap((list) => list.Todos || []);
       const customizedTodos = jobTodos.filter((row) => row.isCustomized);
 
       let bookingTouched = false;
@@ -58,18 +50,18 @@ class JobSyncService {
       }
 
       if (customizedTodos.length === 0) {
-        await this.jobTodoListRepository.deleteByBookingId(booking.id);
+        await this.todoListRepository.deleteByBookingId(booking.id);
         for (const todoList of todoLists) {
-          const jobTodoList = await this.jobTodoListRepository.create({
+          const jobTodoList = await this.todoListRepository.create({
             bookingId: booking.id,
             name: todoList.name,
             sortOrder: todoList.sortOrder,
           });
           const todos = todoList.Todos || [];
           if (todos.length) {
-            await this.jobTodoRepository.bulkCreate(
+            await this.todoRepository.bulkCreate(
               todos.map((todo) => ({
-                jobTodoListId: jobTodoList.id,
+                todoListId: jobTodoList.id,
                 text: todo.text,
                 sortOrder: todo.sortOrder,
                 completed: false,

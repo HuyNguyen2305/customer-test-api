@@ -4,21 +4,15 @@ const { default: CustomerInvoiceRepository } = await import('#repositories/custo
 const { requestContext } = await import('#common/request-context.js');
 
 describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
-  it('scopes the lookup by both id and customerId, and includes line items scoped to the same tenant schema', async () => {
+  it('scopes the lookup by both id and customerId, and includes line items scoped to the same tenant schema (no address/Customer join)', async () => {
     const invoice = { id: 'i1', customerId: 'c1' };
     const scopedModel = { findOne: jest.fn().mockResolvedValue(invoice) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
-    const scopedAddressModel = {};
-    const scopedTaxModel = {};
-    const scopedCustomerModel = {};
     const customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = customerInvoiceItemModel;
-    repository.addressModel = { schema: jest.fn().mockReturnValue(scopedAddressModel) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue(scopedTaxModel) };
-    repository.customerModel = { schema: jest.fn().mockReturnValue(scopedCustomerModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'c1'),
@@ -28,12 +22,7 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'i1', customerId: 'c1' },
       attributes: { exclude: ['updatedAt'] },
-      include: [
-        { model: scopedItemModel, as: 'items' },
-        { model: scopedAddressModel, as: 'address' },
-        { model: scopedTaxModel, as: 'taxes' },
-        { model: scopedCustomerModel, as: 'Customer' },
-      ],
+      include: [{ model: scopedItemModel, as: 'items' }],
     });
     expect(result).toBe(invoice);
   });
@@ -44,9 +33,6 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
     repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.addressModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerInvoiceTaxModel = { schema: jest.fn().mockReturnValue({}) };
-    repository.customerModel = { schema: jest.fn().mockReturnValue({}) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'someone-else'),

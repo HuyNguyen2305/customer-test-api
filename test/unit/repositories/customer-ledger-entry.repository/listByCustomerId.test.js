@@ -19,6 +19,7 @@ describe('CustomerLedgerEntryRepository.listByCustomerId', () => {
       limit: 20,
       offset: 0,
       order: [['createdAt', 'DESC']],
+      attributes: { exclude: ['customerId'] },
     });
   });
 });

@@ -11,7 +11,7 @@ class EstimatePdfService {
   }
 
   async getEstimatePdf(id, customerId) {
-    const estimate = await this.customerEstimateRepository.findByIdForCustomer(id, customerId);
+    const estimate = await this.customerEstimateRepository.findByIdForPdf(id, customerId);
     if (!estimate || !PORTAL_VISIBLE_STATUSES.includes(estimate.status)) throw new NotFoundError('Estimate not found');
 
     const estimateData = toEstimateData(estimate);

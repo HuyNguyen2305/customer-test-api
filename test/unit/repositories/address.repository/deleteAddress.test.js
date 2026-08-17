@@ -18,7 +18,7 @@ describe('AddressRepository.deleteAddress', () => {
     expect(result).toBe(true);
   });
 
-  it("returns false when nothing was destroyed (wrong id/customer)", async () => {
+  it('returns false when nothing was destroyed (wrong id/customer)', async () => {
     const scopedModel = { destroy: jest.fn().mockResolvedValue(0) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(AddressRepository.prototype);

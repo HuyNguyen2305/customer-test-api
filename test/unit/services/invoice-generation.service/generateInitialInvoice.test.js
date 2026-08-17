@@ -14,9 +14,12 @@ function buildService({ booking, existingInvoice, serviceInvoice, created } = {}
   service.serviceInvoiceRepository = { findByServiceId: jest.fn().mockResolvedValue(serviceInvoice) };
   service.addressRepository = { getByIdForCustomer: jest.fn().mockResolvedValue(null) };
   service.invoiceItemRepository = { listByServiceInvoiceId: jest.fn().mockResolvedValue([]) };
-  service.customerInvoiceItemRepository = { bulkCreateItems: jest.fn().mockResolvedValue([]) };
+  service.customerInvoiceItemRepository = {
+    bulkCreateItems: jest.fn().mockResolvedValue([]),
+    listByInvoiceId: jest.fn().mockResolvedValue([]),
+    updateMany: jest.fn().mockResolvedValue(undefined),
+  };
   service.taxRateRepository = { findByState: jest.fn().mockResolvedValue(null) };
-  service.customerInvoiceTaxRepository = { createTax: jest.fn().mockResolvedValue(null) };
   return service;
 }
 

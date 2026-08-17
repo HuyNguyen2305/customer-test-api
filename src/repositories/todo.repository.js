@@ -1,8 +1,8 @@
 import { BaseRepository } from '#common/base-repository.js';
 
-class JobTodoRepository extends BaseRepository {
-  constructor({ jobTodoModel }) {
-    super(jobTodoModel);
+class TodoRepository extends BaseRepository {
+  constructor({ todoModel }) {
+    super(todoModel);
   }
 
   updateOne(id, data) {
@@ -10,4 +10,4 @@ class JobTodoRepository extends BaseRepository {
   }
 }
 
-export default JobTodoRepository;
+export default TodoRepository;

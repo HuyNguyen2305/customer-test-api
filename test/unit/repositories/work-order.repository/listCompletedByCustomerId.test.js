@@ -25,7 +25,10 @@ describe('WorkOrderRepository.listCompletedByCustomerId', () => {
       limit: 20,
       offset: 0,
       order: [['startTime', 'DESC']],
-      include: [{ model: scopedServiceModel }, { model: scopedAddressModel }],
+      include: [
+        { model: scopedServiceModel, attributes: ['name'] },
+        { model: scopedAddressModel, attributes: ['id', 'label', 'line1', 'line2', 'city', 'state', 'zip', 'country'] },
+      ],
     });
     expect(result).toEqual({ rows: [{ id: 'b1' }], count: 1 });
   });

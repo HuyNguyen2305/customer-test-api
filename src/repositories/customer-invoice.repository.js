@@ -4,17 +4,9 @@ import { BaseRepository } from '#common/base-repository.js';
 const STATUS_ORDER = ['draft', 'sent', 'void', 'write_off', 'paid'];
 
 class CustomerInvoiceRepository extends BaseRepository {
-  constructor({
-    customerInvoiceModel,
-    customerInvoiceItemModel,
-    addressModel,
-    customerInvoiceTaxModel,
-    customerModel,
-  }) {
+  constructor({ customerInvoiceModel, customerInvoiceItemModel, customerModel }) {
     super(customerInvoiceModel);
     this.customerInvoiceItemModel = customerInvoiceItemModel;
-    this.addressModel = addressModel;
-    this.customerInvoiceTaxModel = customerInvoiceTaxModel;
     this.customerModel = customerModel;
   }
 
@@ -53,24 +45,43 @@ class CustomerInvoiceRepository extends BaseRepository {
       // already whitelists response fields, so createdAt never reaches the API
       // even though it stays in the query.
       attributes: { exclude: ['updatedAt'] },
-      include: [
-        { model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' },
-        { model: this.scopeModel(this.addressModel), as: 'address' },
-        { model: this.scopeModel(this.customerInvoiceTaxModel), as: 'taxes' },
-      ],
+      // No 'address' join: toInvoiceData builds addressLabel/addressLine1/etc.
+      // from denormalized columns already on this row, never from the
+      // associated Address.
+      include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
     });
   }
 
+  // Lean JSON-detail shape: no address join (same reason as listByCustomerId)
+  // and no Customer join (only the PDF route needs it - see findByIdForPdf).
   findByIdForCustomer(id, customerId) {
+    return this.findOne({
+      where: { id, customerId },
+      attributes: { exclude: ['updatedAt'] },
+      include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
+    });
+  }
+
+  // Adds the Customer join back on top of findByIdForCustomer's shape - only
+  // buildInvoicePdf (via InvoicePdfService) reads invoice.Customer.
+  findByIdForPdf(id, customerId) {
     return this.findOne({
       where: { id, customerId },
       attributes: { exclude: ['updatedAt'] },
       include: [
         { model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' },
-        { model: this.scopeModel(this.addressModel), as: 'address' },
-        { model: this.scopeModel(this.customerInvoiceTaxModel), as: 'taxes' },
         { model: this.scopeModel(this.customerModel), as: 'Customer' },
       ],
+    });
+  }
+
+  // Minimal shape for the ownership/status pre-check in
+  // CustomerInvoiceItemService.requireOwnedDraftInvoice - that check only
+  // reads status/discountType/discountValue, never items or any join.
+  findSummaryByIdForCustomer(id, customerId) {
+    return this.findOne({
+      where: { id, customerId },
+      attributes: ['id', 'status', 'discountType', 'discountValue', 'customerId'],
     });
   }
 

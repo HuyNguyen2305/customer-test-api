@@ -28,7 +28,6 @@ function buildService() {
   customerInvoiceRepository.model = models.CustomerInvoice;
   customerInvoiceRepository.customerInvoiceItemModel = models.CustomerInvoiceItem;
   customerInvoiceRepository.addressModel = models.Address;
-  customerInvoiceRepository.customerInvoiceTaxModel = models.CustomerInvoiceTax;
   customerInvoiceRepository.customerModel = models.Customer;
   const service = Object.create(InvoicePdfService.prototype);
   service.customerInvoiceRepository = customerInvoiceRepository;

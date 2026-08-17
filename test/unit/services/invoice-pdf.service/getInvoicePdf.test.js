@@ -28,13 +28,13 @@ describe('InvoicePdfService.getInvoicePdf', () => {
     buildInvoicePdfMock.mockResolvedValue(buffer);
     const service = Object.create(InvoicePdfService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue(baseInvoice),
+      findByIdForPdf: jest.fn().mockResolvedValue(baseInvoice),
       sumBalanceDueByCustomerId: jest.fn().mockResolvedValue(130),
     };
 
     const result = await service.getInvoicePdf('i1', 'c1');
 
-    expect(service.customerInvoiceRepository.findByIdForCustomer).toHaveBeenCalledWith('i1', 'c1');
+    expect(service.customerInvoiceRepository.findByIdForPdf).toHaveBeenCalledWith('i1', 'c1');
     expect(service.customerInvoiceRepository.sumBalanceDueByCustomerId).toHaveBeenCalledWith('c1');
     expect(buildInvoicePdfMock).toHaveBeenCalledTimes(1);
     const [invoiceData, options] = buildInvoicePdfMock.mock.calls[0];
@@ -47,7 +47,7 @@ describe('InvoicePdfService.getInvoicePdf', () => {
   it('throws NotFoundError (never leaking existence) when the invoice belongs to another customer', async () => {
     const service = Object.create(InvoicePdfService.prototype);
     service.customerInvoiceRepository = {
-      findByIdForCustomer: jest.fn().mockResolvedValue(null),
+      findByIdForPdf: jest.fn().mockResolvedValue(null),
       sumBalanceDueByCustomerId: jest.fn(),
     };
 

@@ -34,6 +34,46 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      subtotal: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+      },
+      tax1RateId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      tax1Name: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      tax1Rate: {
+        type: DataTypes.DECIMAL(6, 3),
+        allowNull: true,
+      },
+      tax1Total: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+      },
+      tax2RateId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      tax2Name: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      tax2Rate: {
+        type: DataTypes.DECIMAL(6, 3),
+        allowNull: true,
+      },
+      tax2Total: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+      },
+      total: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+      },
     },
     {
       tableName: 'customer_invoice_items',

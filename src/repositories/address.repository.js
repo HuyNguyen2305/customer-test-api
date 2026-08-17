@@ -12,11 +12,15 @@ class AddressRepository extends BaseRepository {
         ['isDefault', 'DESC'],
         ['createdAt', 'ASC'],
       ],
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
     });
   }
 
   getByIdForCustomer(id, customerId) {
-    return this.findOne({ where: { id, customerId } });
+    return this.findOne({
+      where: { id, customerId },
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
+    });
   }
 
   createAddress(data) {

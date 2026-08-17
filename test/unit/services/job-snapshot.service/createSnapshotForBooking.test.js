@@ -7,10 +7,9 @@ function buildService({ booking, materials = [], todoLists = [] } = {}) {
   const service = Object.create(JobSnapshotService.prototype);
   service.bookingRepository = { findByPk: jest.fn().mockResolvedValue(booking) };
   service.materialRepository = { findByServiceId: jest.fn().mockResolvedValue(materials) };
-  service.todoListRepository = { findByServiceId: jest.fn().mockResolvedValue(todoLists) };
+  service.todoListRepository = { findByServiceId: jest.fn().mockResolvedValue(todoLists), create: jest.fn() };
   service.jobMaterialRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
-  service.jobTodoListRepository = { create: jest.fn() };
-  service.jobTodoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
+  service.todoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
   return service;
 }
 
@@ -57,18 +56,18 @@ describe('JobSnapshotService.createSnapshotForBooking', () => {
     ]);
   });
 
-  it('copies current service todo lists and todos into job_todo_lists/job_todos with isCustomized false', async () => {
+  it('copies current service todo lists and todos into bookingId-owned TodoList/Todo rows with isCustomized false', async () => {
     const booking = { id: 'b1', serviceId: 's1' };
     const jobTodoList = { id: 'jtl1' };
     const todoLists = [{ name: 'Prep', sortOrder: 0, Todos: [{ text: 'Check equipment', sortOrder: 0 }] }];
     const service = buildService({ booking, todoLists });
-    service.jobTodoListRepository.create.mockResolvedValue(jobTodoList);
+    service.todoListRepository.create.mockResolvedValue(jobTodoList);
 
     await service.createSnapshotForBooking('b1');
 
-    expect(service.jobTodoListRepository.create).toHaveBeenCalledWith({ bookingId: 'b1', name: 'Prep', sortOrder: 0 });
-    expect(service.jobTodoRepository.bulkCreate).toHaveBeenCalledWith([
-      { jobTodoListId: 'jtl1', text: 'Check equipment', sortOrder: 0, completed: false, isCustomized: false },
+    expect(service.todoListRepository.create).toHaveBeenCalledWith({ bookingId: 'b1', name: 'Prep', sortOrder: 0 });
+    expect(service.todoRepository.bulkCreate).toHaveBeenCalledWith([
+      { todoListId: 'jtl1', text: 'Check equipment', sortOrder: 0, completed: false, isCustomized: false },
     ]);
   });
 });
