@@ -4,14 +4,16 @@ const { default: CustomerPaymentMethodService } = await import('#service/custome
 
 describe('CustomerPaymentMethodService.listPaymentMethods', () => {
   it('delegates to the repository scoped by customerId', async () => {
-    const paymentMethods = [{ id: 'pm1', type: 'card', token: 'tok_123', isDefault: true }];
+    const paymentMethods = [{ id: 'pm1', type: 'card', token: 'tok_123', gateway: 'square', isDefault: true }];
     const service = Object.create(CustomerPaymentMethodService.prototype);
     service.customerPaymentMethodRepository = { listByCustomerId: jest.fn().mockResolvedValue(paymentMethods) };
 
     const result = await service.listPaymentMethods('c1');
 
     expect(service.customerPaymentMethodRepository.listByCustomerId).toHaveBeenCalledWith('c1');
-    expect(result).toBe(paymentMethods);
+    expect(result).toEqual([
+      { id: 'pm1', type: 'card', token: 'tok_123', gateway: 'square', creditBalance: null, isDefault: true },
+    ]);
   });
 
   it('returns an empty list without error when the customer has none', async () => {
@@ -21,5 +23,17 @@ describe('CustomerPaymentMethodService.listPaymentMethods', () => {
     const result = await service.listPaymentMethods('c1');
 
     expect(result).toEqual([]);
+  });
+
+  it('coerces a string creditBalance (as returned by Postgres DECIMAL columns) to a number', async () => {
+    const paymentMethods = [
+      { id: 'pm-credit', type: 'open_credit', token: null, gateway: null, creditBalance: '200.00', isDefault: false },
+    ];
+    const service = Object.create(CustomerPaymentMethodService.prototype);
+    service.customerPaymentMethodRepository = { listByCustomerId: jest.fn().mockResolvedValue(paymentMethods) };
+
+    const result = await service.listPaymentMethods('c1');
+
+    expect(result[0].creditBalance).toBe(200);
   });
 });

@@ -1,4 +1,4 @@
-import { requestContext } from '#common/request-context.js';
+import { requireCustomerId } from '#common/require-customer-id.js';
 
 class BalanceController {
   constructor({ balanceService }) {
@@ -6,13 +6,13 @@ class BalanceController {
   }
 
   async getBalance(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const data = await this.balanceService.getBalance(customerId);
     reply.send({ success: true, message: 'Balance retrieved', data });
   }
 
   async payBalance(request, reply) {
-    const { customerId } = requestContext.get('identity') ?? {};
+    const customerId = requireCustomerId();
     const { paymentMethodId } = request.body;
     const data = await this.balanceService.payBalance(customerId, paymentMethodId);
     reply.send({ success: true, message: 'Balance paid', data });

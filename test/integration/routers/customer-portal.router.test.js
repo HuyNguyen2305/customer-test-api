@@ -38,6 +38,7 @@ const {
   paymentMethodA,
   paymentMethodA2,
   paymentMethodB,
+  paymentMethodOpenCreditA,
   ledgerChargeA,
   ledgerPaymentA,
   ledgerChargeA2,
@@ -173,6 +174,29 @@ describe('Customer portal GET endpoints (integration)', () => {
 
       await app.close();
     });
+  });
+
+  it('GET /customer/payment-methods returns a numeric creditBalance for an open_credit payment method, not a 500', async () => {
+    await seedWithTransaction(
+      { ...allFixtures, CustomerPaymentMethod: [paymentMethodA, paymentMethodOpenCreditA] },
+      async () => {
+        const app = await buildApp();
+        await app.ready();
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/customer/payment-methods',
+          headers: headersFor(customerA.id),
+        });
+
+        expect(response.statusCode).toBe(200);
+        const openCredit = response.json().data.find((method) => method.id === paymentMethodOpenCreditA.id);
+        expect(openCredit.creditBalance).toBe(200);
+        expect(typeof openCredit.creditBalance).toBe('number');
+
+        await app.close();
+      },
+    );
   });
 
   it("GET /customer/invoices lists only the authenticated customer's invoices", async () => {
@@ -1071,6 +1095,37 @@ describe('Customer portal GET endpoints (integration)', () => {
       await app.ready();
 
       const response = await app.inject({ method: 'GET', url: '/customer/payment-methods', headers: headersFor() });
+
+      expect(response.statusCode).toBe(401);
+
+      await app.close();
+    });
+  });
+
+  it('GET /balance rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({ method: 'GET', url: '/balance', headers: headersFor() });
+
+      expect(response.statusCode).toBe(401);
+
+      await app.close();
+    });
+  });
+
+  it('POST /balance/pay rejects an unauthenticated request', async () => {
+    await seedWithTransaction(allFixtures, async () => {
+      const app = await buildApp();
+      await app.ready();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/balance/pay',
+        headers: headersFor(),
+        payload: { paymentMethodId: paymentMethodA.id },
+      });
 
       expect(response.statusCode).toBe(401);
 

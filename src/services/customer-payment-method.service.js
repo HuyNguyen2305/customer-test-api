@@ -1,5 +1,20 @@
 import { NotFoundError } from '#configs/error.js';
 import { getPaymentGateway } from '#common/factory/payment-gateway/payment-gateway.factory.js';
+import { toNumberOrNull } from './billing-calculation.util.js';
+
+// Postgres DECIMAL columns come back from Sequelize as strings; creditBalance
+// reaches a nullable-number response field, which fast-json-stringify checks
+// strictly rather than coercing (same rationale as billing-calculation.util.js).
+export function toPaymentMethodData(paymentMethod) {
+  return {
+    id: paymentMethod.id,
+    type: paymentMethod.type,
+    token: paymentMethod.token,
+    gateway: paymentMethod.gateway,
+    creditBalance: toNumberOrNull(paymentMethod.creditBalance),
+    isDefault: paymentMethod.isDefault,
+  };
+}
 
 class CustomerPaymentMethodService {
   constructor({ customerPaymentMethodRepository, customerRepository }) {
@@ -7,14 +22,15 @@ class CustomerPaymentMethodService {
     this.customerRepository = customerRepository;
   }
 
-  listPaymentMethods(customerId) {
-    return this.customerPaymentMethodRepository.listByCustomerId(customerId);
+  async listPaymentMethods(customerId) {
+    const paymentMethods = await this.customerPaymentMethodRepository.listByCustomerId(customerId);
+    return paymentMethods.map(toPaymentMethodData);
   }
 
   async setDefault(customerId, id) {
     const paymentMethod = await this.customerPaymentMethodRepository.setDefault(id, customerId);
     if (!paymentMethod) throw new NotFoundError('Payment method not found');
-    return paymentMethod;
+    return toPaymentMethodData(paymentMethod);
   }
 
   async addPaymentMethod(customerId, { gateway, type = 'card', nonce, cardholderName }) {
@@ -37,7 +53,7 @@ class CustomerPaymentMethodService {
         : await gatewayClient.createCardOnFile({ sourceId: nonce, customerId: gatewayCustomerId, cardholderName });
 
     const existing = await this.customerPaymentMethodRepository.listByCustomerId(customerId);
-    return this.customerPaymentMethodRepository.addPaymentMethod({
+    const created = await this.customerPaymentMethodRepository.addPaymentMethod({
       customerId,
       type,
       gateway,
@@ -45,6 +61,7 @@ class CustomerPaymentMethodService {
       gatewayCustomerId,
       isDefault: existing.length === 0,
     });
+    return toPaymentMethodData(created);
   }
 
   grantOpenCredit(customerId, amount) {

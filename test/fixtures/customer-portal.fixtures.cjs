@@ -197,6 +197,17 @@ const paymentMethodB = {
   isDefault: true,
 };
 
+// Covers the DECIMAL-as-string creditBalance path (Postgres returns it as a
+// string, and the payment-method response schema declares it as a nullable
+// number - see toPaymentMethodData in customer-payment-method.service.js).
+const paymentMethodOpenCreditA = {
+  id: '22222222-6666-7777-8888-999999999999',
+  customerId: customerA.id,
+  type: 'open_credit',
+  creditBalance: 200,
+  isDefault: false,
+};
+
 const ledgerChargeA = {
   id: '22222222-3333-4444-5555-999999999999',
   customerId: customerA.id,
@@ -283,6 +294,7 @@ module.exports = {
   paymentMethodA,
   paymentMethodA2,
   paymentMethodB,
+  paymentMethodOpenCreditA,
   ledgerChargeA,
   ledgerPaymentA,
   ledgerChargeA2,

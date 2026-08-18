@@ -1,18 +1,19 @@
 import { jest } from '@jest/globals';
 
-const getMock = jest.fn();
+const requireCustomerIdMock = jest.fn();
 
-jest.unstable_mockModule('#common/request-context.js', () => ({
-  requestContext: { get: getMock },
+jest.unstable_mockModule('#common/require-customer-id.js', () => ({
+  requireCustomerId: requireCustomerIdMock,
 }));
 
 const { default: BalanceController } = await import('#controller/balance.controller.js');
+const { UnauthorizedError } = await import('#configs/error.js');
 
 describe('BalanceController.getBalance', () => {
-  beforeEach(() => getMock.mockReset());
+  beforeEach(() => requireCustomerIdMock.mockReset());
 
-  it('sends the balance for the identity customerId', async () => {
-    getMock.mockReturnValue({ customerId: 'c1' });
+  it('sends the balance for the authenticated customerId', async () => {
+    requireCustomerIdMock.mockReturnValue('c1');
     const data = { amount: 10, currency: 'USD' };
     const controller = Object.create(BalanceController.prototype);
     controller.balanceService = { getBalance: jest.fn().mockResolvedValue(data) };
@@ -24,14 +25,16 @@ describe('BalanceController.getBalance', () => {
     expect(reply.send).toHaveBeenCalledWith({ success: true, message: 'Balance retrieved', data });
   });
 
-  it('passes undefined customerId when there is no identity', async () => {
-    getMock.mockReturnValue(undefined);
+  it('propagates UnauthorizedError instead of calling the service when there is no identity', async () => {
+    requireCustomerIdMock.mockImplementation(() => {
+      throw new UnauthorizedError('Authentication required');
+    });
     const controller = Object.create(BalanceController.prototype);
-    controller.balanceService = { getBalance: jest.fn().mockResolvedValue({}) };
+    controller.balanceService = { getBalance: jest.fn() };
     const reply = { send: jest.fn() };
 
-    await controller.getBalance({}, reply);
+    await expect(controller.getBalance({}, reply)).rejects.toThrow(UnauthorizedError);
 
-    expect(controller.balanceService.getBalance).toHaveBeenCalledWith(undefined);
+    expect(controller.balanceService.getBalance).not.toHaveBeenCalled();
   });
 });
