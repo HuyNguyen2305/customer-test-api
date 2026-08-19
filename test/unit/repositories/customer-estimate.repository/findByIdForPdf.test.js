@@ -9,7 +9,6 @@ describe('CustomerEstimateRepository.findByIdForPdf', () => {
     const scopedModel = { findOne: jest.fn().mockResolvedValue(estimate) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
-    const scopedTaxRateModel = {};
     const scopedItemDefModel = {};
     const scopedBookingModel = {};
     const scopedAddressModel = {};
@@ -18,7 +17,6 @@ describe('CustomerEstimateRepository.findByIdForPdf', () => {
     const repository = Object.create(CustomerEstimateRepository.prototype);
     repository.model = model;
     repository.customerEstimateItemModel = customerEstimateItemModel;
-    repository.taxRateModel = { schema: jest.fn().mockReturnValue(scopedTaxRateModel) };
     repository.itemModel = { schema: jest.fn().mockReturnValue(scopedItemDefModel) };
     repository.bookingModel = { schema: jest.fn().mockReturnValue(scopedBookingModel) };
     repository.addressModel = { schema: jest.fn().mockReturnValue(scopedAddressModel) };
@@ -35,11 +33,7 @@ describe('CustomerEstimateRepository.findByIdForPdf', () => {
         {
           model: scopedItemModel,
           as: 'items',
-          include: [
-            { model: scopedTaxRateModel, as: 'Tax1Rate', attributes: ['name', 'rate'] },
-            { model: scopedTaxRateModel, as: 'Tax2Rate', attributes: ['name', 'rate'] },
-            { model: scopedItemDefModel, attributes: ['name'] },
-          ],
+          include: [{ model: scopedItemDefModel, attributes: ['name'] }],
         },
         { model: scopedBookingModel, include: [{ model: scopedAddressModel }] },
         { model: scopedCustomerModel, as: 'Customer' },

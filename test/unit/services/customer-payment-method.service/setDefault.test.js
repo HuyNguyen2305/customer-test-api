@@ -5,7 +5,12 @@ const { NotFoundError } = await import('#configs/error.js');
 
 describe('CustomerPaymentMethodService.setDefault', () => {
   it('delegates to the repository and returns the updated payment method', async () => {
-    const paymentMethod = { id: 'pm1', type: 'card', token: 'tok_1', gateway: 'square', isDefault: true };
+    const paymentMethod = {
+      id: 'pm1',
+      type: 'card',
+      paymentDetails: { token: 'tok_1', gateway: 'square' },
+      isDefault: true,
+    };
     const service = Object.create(CustomerPaymentMethodService.prototype);
     service.customerPaymentMethodRepository = { setDefault: jest.fn().mockResolvedValue(paymentMethod) };
 
@@ -23,7 +28,12 @@ describe('CustomerPaymentMethodService.setDefault', () => {
   });
 
   it('coerces a string creditBalance (as returned by Postgres DECIMAL columns) to a number', async () => {
-    const paymentMethod = { id: 'pm1', type: 'open_credit', token: null, gateway: null, creditBalance: '200.00', isDefault: true };
+    const paymentMethod = {
+      id: 'pm1',
+      type: 'open_credit',
+      paymentDetails: { creditBalance: '200.00' },
+      isDefault: true,
+    };
     const service = Object.create(CustomerPaymentMethodService.prototype);
     service.customerPaymentMethodRepository = { setDefault: jest.fn().mockResolvedValue(paymentMethod) };
 

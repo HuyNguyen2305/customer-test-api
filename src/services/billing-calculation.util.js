@@ -13,6 +13,24 @@ export function toNumberOrNull(value) {
   return value == null ? null : Number(value);
 }
 
+// customer_invoice_items persists its tax1*/tax2* fields nested under one
+// taxSlots JSONB column, but the math below is shared with customer_estimate_items
+// (which stays flat) - these two adapters keep that shared math working on a
+// flat shape regardless, translating only at the invoice-item call sites.
+//
+// item.get({ plain: true }) rather than a bare spread: Sequelize instances
+// expose attributes as prototype getters backed by dataValues, not as own
+// enumerable properties, so `{ ...item }` silently drops every column (id
+// included) and only copies Sequelize's internal bookkeeping fields instead.
+export function flattenTaxSlots(item) {
+  const plain = typeof item.get === 'function' ? item.get({ plain: true }) : item;
+  return { ...plain, ...plain.taxSlots };
+}
+
+export function nestTaxSlotsPatch({ id, subtotal, total, ...taxSlots }) {
+  return { id, subtotal, total, taxSlots };
+}
+
 export function computeDiscountRatio(subtotal, discountType, discountValue) {
   if (subtotal <= 0) return 0;
   const discountAmount = discountType === 'flat' ? Number(discountValue) : subtotal * (Number(discountValue) / 100);

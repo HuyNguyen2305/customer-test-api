@@ -23,7 +23,10 @@ describe('CustomerPaymentMethodRepository.decrementCredit', () => {
   });
 
   it('reuses an externally supplied transaction instead of opening its own', async () => {
-    const paymentMethod = { id: 'pm1', creditBalance: 50 };
+    const paymentMethod = {
+      id: 'pm1',
+      paymentDetails: { creditBalance: 50, token: 'tok_x', gateway: 'square', gatewayCustomerId: 'sq_cust_x' },
+    };
     const scopedModel = buildScopedModel(paymentMethod);
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerPaymentMethodRepository.prototype);
@@ -37,13 +40,18 @@ describe('CustomerPaymentMethodRepository.decrementCredit', () => {
     expect(transactionMock).not.toHaveBeenCalled();
     expect(scopedModel.findByPk).toHaveBeenCalledWith('pm1', { transaction: externalTransaction });
     expect(scopedModel.update).toHaveBeenCalledWith(
-      { creditBalance: 30 },
+      {
+        paymentDetails: { creditBalance: 30, token: 'tok_x', gateway: 'square', gatewayCustomerId: 'sq_cust_x' },
+      },
       { where: { id: 'pm1' }, transaction: externalTransaction },
     );
   });
 
   it('opens its own transaction when none is provided', async () => {
-    const paymentMethod = { id: 'pm1', creditBalance: 50 };
+    const paymentMethod = {
+      id: 'pm1',
+      paymentDetails: { creditBalance: 50, token: 'tok_x', gateway: 'square', gatewayCustomerId: 'sq_cust_x' },
+    };
     const scopedModel = buildScopedModel(paymentMethod);
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerPaymentMethodRepository.prototype);

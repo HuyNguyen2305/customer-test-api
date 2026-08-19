@@ -177,7 +177,7 @@ const paymentMethodA = {
   id: '22222222-3333-4444-5555-888888888888',
   customerId: customerA.id,
   type: 'card',
-  token: 'tok_visa_4242',
+  paymentDetails: { token: 'tok_visa_4242' },
   isDefault: true,
 };
 
@@ -185,7 +185,7 @@ const paymentMethodA2 = {
   id: '22222222-4444-5555-6666-777777777777',
   customerId: customerA.id,
   type: 'bank',
-  token: 'tok_bank_5678',
+  paymentDetails: { token: 'tok_bank_5678' },
   isDefault: false,
 };
 
@@ -193,7 +193,7 @@ const paymentMethodB = {
   id: '22222222-5555-6666-7777-888888888888',
   customerId: customerB.id,
   type: 'card',
-  token: 'tok_visa_9999',
+  paymentDetails: { token: 'tok_visa_9999' },
   isDefault: true,
 };
 
@@ -204,7 +204,7 @@ const paymentMethodOpenCreditA = {
   id: '22222222-6666-7777-8888-999999999999',
   customerId: customerA.id,
   type: 'open_credit',
-  creditBalance: 200,
+  paymentDetails: { creditBalance: 200 },
   isDefault: false,
 };
 
@@ -249,7 +249,6 @@ const pdfA = {
   name: 'Inspection Report.pdf',
   filePath: 'inspection-report.pdf',
   originalFileName: 'Inspection Report.pdf',
-  fileSize: 2048,
 };
 
 const customerDocumentA = {

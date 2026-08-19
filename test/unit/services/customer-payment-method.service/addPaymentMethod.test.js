@@ -62,9 +62,7 @@ describe('CustomerPaymentMethodService.addPaymentMethod', () => {
     expect(service.customerPaymentMethodRepository.addPaymentMethod).toHaveBeenCalledWith({
       customerId: 'c1',
       type: 'card',
-      gateway: 'square',
-      token: 'sq_card_new',
-      gatewayCustomerId: 'sq_cust_new',
+      paymentDetails: { token: 'sq_card_new', gateway: 'square', gatewayCustomerId: 'sq_cust_new' },
       isDefault: true,
     });
   });
@@ -120,7 +118,7 @@ describe('CustomerPaymentMethodService.addPaymentMethod', () => {
     expect(createBankAccountOnFileMock).toHaveBeenCalledWith({ sourceId: 'bnon_1', customerId: 'sq_cust_existing' });
     expect(createCardOnFileMock).not.toHaveBeenCalled();
     expect(service.customerPaymentMethodRepository.addPaymentMethod).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'bank', token: 'sq_bank_new' }),
+      expect.objectContaining({ type: 'bank', paymentDetails: expect.objectContaining({ token: 'sq_bank_new' }) }),
     );
   });
 });

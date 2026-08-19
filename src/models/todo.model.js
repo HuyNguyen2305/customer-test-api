@@ -27,10 +27,6 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
       },
-      completedAt: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
       isCustomized: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

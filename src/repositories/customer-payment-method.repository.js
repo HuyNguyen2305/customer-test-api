@@ -10,7 +10,7 @@ class CustomerPaymentMethodRepository extends BaseRepository {
   listByCustomerId(customerId) {
     return this.findAll({
       where: { customerId },
-      attributes: { exclude: ['customerId', 'gatewayCustomerId', 'createdAt', 'updatedAt'] },
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
     });
   }
 
@@ -28,8 +28,11 @@ class CustomerPaymentMethodRepository extends BaseRepository {
       const paymentMethod = await scoped.findByPk(id, { transaction });
       if (!paymentMethod) return null;
 
-      const newBalance = Number(paymentMethod.creditBalance) - amount;
-      await scoped.update({ creditBalance: newBalance }, { where: { id }, transaction });
+      const newBalance = Number(paymentMethod.paymentDetails?.creditBalance) - amount;
+      await scoped.update(
+        { paymentDetails: { ...paymentMethod.paymentDetails, creditBalance: newBalance } },
+        { where: { id }, transaction },
+      );
       return scoped.findByPk(id, { transaction });
     };
 
@@ -42,13 +45,16 @@ class CustomerPaymentMethodRepository extends BaseRepository {
       const existing = await scoped.findOne({ where: { customerId, type: 'open_credit' }, transaction });
 
       if (existing) {
-        const newBalance = Number(existing.creditBalance) + amount;
-        await scoped.update({ creditBalance: newBalance }, { where: { id: existing.id }, transaction });
+        const newBalance = Number(existing.paymentDetails?.creditBalance) + amount;
+        await scoped.update(
+          { paymentDetails: { ...existing.paymentDetails, creditBalance: newBalance } },
+          { where: { id: existing.id }, transaction },
+        );
         return scoped.findByPk(existing.id, { transaction });
       }
 
       return scoped.create(
-        { customerId, type: 'open_credit', creditBalance: amount, isDefault: false },
+        { customerId, type: 'open_credit', paymentDetails: { creditBalance: amount }, isDefault: false },
         { transaction },
       );
     });

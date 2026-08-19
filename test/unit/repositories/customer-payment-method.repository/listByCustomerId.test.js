@@ -17,7 +17,7 @@ describe('CustomerPaymentMethodRepository.listByCustomerId', () => {
 
     expect(scopedModel.findAll).toHaveBeenCalledWith({
       where: { customerId: 'c1' },
-      attributes: { exclude: ['customerId', 'gatewayCustomerId', 'createdAt', 'updatedAt'] },
+      attributes: { exclude: ['customerId', 'createdAt', 'updatedAt'] },
     });
     expect(result).toEqual([{ id: 'pm1' }]);
   });

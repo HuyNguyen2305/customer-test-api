@@ -23,8 +23,8 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
       offset: 0,
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['updatedAt'] },
-      // No 'address' join - toInvoiceData reads denormalized addressLabel/
-      // addressLine1/etc. columns already on the row instead.
+      // No 'address' join - toInvoiceData reads the addressSnapshot JSONB
+      // column already on the row instead.
       include: [{ model: scopedItemModel, as: 'items' }],
     });
     expect(result).toEqual({ rows: [{ id: 'i1' }], count: 1 });

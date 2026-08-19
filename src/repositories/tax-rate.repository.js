@@ -9,6 +9,11 @@ class TaxRateRepository extends BaseRepository {
     if (!state) return null;
     return this.findOne({ where: { state, country: 'US' } });
   }
+
+  findByIds(ids) {
+    if (!ids.length) return [];
+    return this.findAll({ where: { id: ids } });
+  }
 }
 
 export default TaxRateRepository;

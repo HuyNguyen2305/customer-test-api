@@ -2,23 +2,19 @@ module.exports = {
   squareCard: {
     customerId: '11111111-1111-1111-1111-111111111111',
     type: 'card',
-    gateway: 'square',
-    token: 'sq_card_test_1',
-    gatewayCustomerId: 'sq_cust_test_1',
+    paymentDetails: { gateway: 'square', token: 'sq_card_test_1', gatewayCustomerId: 'sq_cust_test_1' },
     isDefault: true,
   },
   stripeCard: {
     customerId: '11111111-1111-1111-1111-111111111111',
     type: 'card',
-    gateway: 'stripe',
-    token: 'pm_test_1',
-    gatewayCustomerId: 'cus_test_1',
+    paymentDetails: { gateway: 'stripe', token: 'pm_test_1', gatewayCustomerId: 'cus_test_1' },
     isDefault: false,
   },
   openCredit: {
     customerId: '11111111-1111-1111-1111-111111111111',
     type: 'open_credit',
-    creditBalance: 200,
+    paymentDetails: { creditBalance: 200 },
     isDefault: false,
   },
 };

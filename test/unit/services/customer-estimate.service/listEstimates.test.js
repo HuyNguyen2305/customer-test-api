@@ -33,8 +33,7 @@ const estimateRow = {
       cost: 100,
       qty: 1,
       sortOrder: 0,
-      tax1RateId: null,
-      tax2RateId: null,
+      taxSlots: { tax1RateId: null, tax2RateId: null },
     },
   ],
 };
@@ -42,6 +41,7 @@ const estimateRow = {
 function buildService() {
   const service = Object.create(CustomerEstimateService.prototype);
   service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  service.taxRateRepository = { findByIds: jest.fn().mockResolvedValue([]) };
   return service;
 }
 
@@ -136,5 +136,46 @@ describe('CustomerEstimateService.listEstimates', () => {
     const result = await service.listEstimates('c1');
 
     expect(result.estimates).toEqual([]);
+  });
+
+  it('resolves each item tax1RateId/tax2RateId through the batched TaxRateRepository lookup and stamps the name/rate onto the item', async () => {
+    const rowWithTaxes = {
+      ...estimateRow,
+      items: [
+        {
+          id: 'ei1',
+          itemId: 'item1',
+          description: 'A',
+          cost: 100,
+          qty: 1,
+          sortOrder: 0,
+          taxSlots: { tax1RateId: 'tax1', tax2RateId: 'tax2' },
+        },
+      ],
+    };
+    const service = buildService();
+    service.customerEstimateRepository = {
+      listByCustomerId: jest.fn().mockResolvedValue({ rows: [rowWithTaxes], count: 1 }),
+    };
+    service.taxRateRepository = {
+      findByIds: jest.fn().mockResolvedValue([
+        { id: 'tax1', name: 'NY Sales Tax', rate: 8 },
+        { id: 'tax2', name: 'Local Tax', rate: 1.5 },
+      ]),
+    };
+
+    const result = await service.listEstimates('c1');
+
+    expect(service.taxRateRepository.findByIds).toHaveBeenCalledWith(['tax1', 'tax2']);
+    expect(result.estimates[0].items[0]).toEqual(
+      expect.objectContaining({
+        tax1RateId: 'tax1',
+        tax1Name: 'NY Sales Tax',
+        tax1Rate: 8,
+        tax2RateId: 'tax2',
+        tax2Name: 'Local Tax',
+        tax2Rate: 1.5,
+      }),
+    );
   });
 });

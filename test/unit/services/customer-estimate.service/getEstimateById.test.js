@@ -31,6 +31,7 @@ const baseEstimate = {
 function buildService() {
   const service = Object.create(CustomerEstimateService.prototype);
   service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  service.taxRateRepository = { findByIds: jest.fn().mockResolvedValue([]) };
   return service;
 }
 
@@ -69,10 +70,7 @@ describe('CustomerEstimateService.getEstimateById', () => {
           cost: 80,
           qty: 1,
           sortOrder: 0,
-          tax1RateId: null,
-          tax1Rate: null,
-          tax2RateId: null,
-          tax2Rate: null,
+          taxSlots: { tax1RateId: null, tax1Rate: null, tax2RateId: null, tax2Rate: null },
         },
       ],
     };
@@ -133,9 +131,7 @@ describe('CustomerEstimateService.getEstimateById', () => {
           cost: 200,
           qty: 1,
           sortOrder: 0,
-          tax1RateId: 'tax1',
-          tax2RateId: null,
-          Tax1Rate: { name: 'NY Sales Tax', rate: 8 },
+          taxSlots: { tax1RateId: 'tax1', tax2RateId: null },
         },
       ],
     };
@@ -143,9 +139,13 @@ describe('CustomerEstimateService.getEstimateById', () => {
     service.customerEstimateRepository = {
       findByIdForCustomer: jest.fn().mockResolvedValue(estimateWithDiscountedTax),
     };
+    service.taxRateRepository = {
+      findByIds: jest.fn().mockResolvedValue([{ id: 'tax1', name: 'NY Sales Tax', rate: 8 }]),
+    };
 
     const result = await service.getEstimateById('e1', 'c1');
 
+    expect(service.taxRateRepository.findByIds).toHaveBeenCalledWith(['tax1']);
     expect(result.taxableAmount).toBe(150);
     expect(result.taxTotal).toBe(12); // 150 * 8%, not 200 * 8% = 16
     expect(result.total).toBe(162);
@@ -153,10 +153,12 @@ describe('CustomerEstimateService.getEstimateById', () => {
       [
         expect.objectContaining({
           id: 'ei1',
-          tax1RateId: 'tax1',
-          tax1Name: 'NY Sales Tax',
-          tax1Rate: 8,
-          tax1Total: 12,
+          taxSlots: expect.objectContaining({
+            tax1RateId: 'tax1',
+            tax1Name: 'NY Sales Tax',
+            tax1Rate: 8,
+            tax1Total: 12,
+          }),
         }),
       ],
       { transaction: FAKE_TRANSACTION },

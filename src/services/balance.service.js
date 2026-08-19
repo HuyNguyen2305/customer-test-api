@@ -35,7 +35,8 @@ class BalanceService {
     if (!paymentMethod) throw new NotFoundError('Payment method not found');
 
     if (paymentMethod.type === 'open_credit') {
-      if (Number(paymentMethod.creditBalance) < amount) throw new BadRequestError('Insufficient open credit');
+      if (Number(paymentMethod.paymentDetails?.creditBalance) < amount)
+        throw new BadRequestError('Insufficient open credit');
 
       // Pure DB path: the credit decrement joins the same transaction as the
       // ledger/balance writes below, so all four writes commit or roll back together.
@@ -50,12 +51,12 @@ class BalanceService {
       // idempotencyKey per attempt protects against the gateway SDK's own
       // network-level retries double-charging for this one call.
       const idempotencyKey = randomUUID();
-      const gateway = getPaymentGateway(paymentMethod.gateway);
+      const gateway = getPaymentGateway(paymentMethod.paymentDetails?.gateway);
       await gateway.charge({
         amount,
         currency: balance.currency,
-        sourceId: paymentMethod.token,
-        customerId: paymentMethod.gatewayCustomerId,
+        sourceId: paymentMethod.paymentDetails?.token,
+        customerId: paymentMethod.paymentDetails?.gatewayCustomerId,
         type: paymentMethod.type,
         idempotencyKey,
       });

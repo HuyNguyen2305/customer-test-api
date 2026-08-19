@@ -103,12 +103,14 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
           cost: 80,
           qty: 1,
           sortOrder: 0,
-          tax1RateId: 'tax1',
-          tax1Name: 'NY Sales Tax',
-          tax1Rate: 4,
-          tax2RateId: null,
-          tax2Name: null,
-          tax2Rate: null,
+          taxSlots: {
+            tax1RateId: 'tax1',
+            tax1Name: 'NY Sales Tax',
+            tax1Rate: 4,
+            tax2RateId: null,
+            tax2Name: null,
+            tax2Rate: null,
+          },
         },
       ],
     };
@@ -124,12 +126,14 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
           cost: 80,
           qty: 1,
           sortOrder: 0,
-          tax1RateId: 'tax1',
-          tax1Name: 'NY Sales Tax',
-          tax1Rate: 4,
-          tax2RateId: null,
-          tax2Name: null,
-          tax2Rate: null,
+          taxSlots: {
+            tax1RateId: 'tax1',
+            tax1Name: 'NY Sales Tax',
+            tax1Rate: 4,
+            tax2RateId: null,
+            tax2Name: null,
+            tax2Rate: null,
+          },
         },
       ],
       expect.anything(),
@@ -138,7 +142,7 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
 
   it('recomputes the invoice items after copying, so subtotal/tax/total columns are filled in from the invoice items table', async () => {
     const created = { id: 'inv1', discountValue: 0, discountType: 'flat' };
-    const copiedItems = [{ id: 'ii1', cost: 80, qty: 1, tax1Rate: 4 }];
+    const copiedItems = [{ id: 'ii1', cost: 80, qty: 1, taxSlots: { tax1Rate: 4 } }];
     const service = buildService({ created, invoiceItems: copiedItems });
     const estimate = {
       id: 'e1',
@@ -152,9 +156,7 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
           cost: 80,
           qty: 1,
           sortOrder: 0,
-          tax1RateId: 'tax1',
-          tax1Name: 'NY',
-          tax1Rate: 4,
+          taxSlots: { tax1RateId: 'tax1', tax1Name: 'NY', tax1Rate: 4 },
         },
       ],
     };
@@ -163,7 +165,9 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
 
     expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('inv1', expect.anything());
     const [patches] = service.customerInvoiceItemRepository.updateMany.mock.calls[0];
-    expect(patches).toEqual([expect.objectContaining({ id: 'ii1', tax1Total: 3.2, total: 83.2 })]);
+    expect(patches).toEqual([
+      expect.objectContaining({ id: 'ii1', total: 83.2, taxSlots: expect.objectContaining({ tax1Total: 3.2 }) }),
+    ]);
   });
 
   it('creates the invoice with a null address when the estimate has no booking', async () => {

@@ -33,7 +33,6 @@ export const SERVICE_KEYS = {
   JOB_SNAPSHOT_SERVICE: 'jobSnapshotService',
   JOB_SYNC_SERVICE: 'jobSyncService',
   JOB_MATERIAL_SERVICE: 'jobMaterialService',
-  JOB_TODO_SERVICE: 'jobTodoService',
   INVOICE_GENERATION_SERVICE: 'invoiceGenerationService',
   LEDGER_SERVICE: 'ledgerService',
   SERVICE_LIFECYCLE_SERVICE: 'serviceLifecycleService',

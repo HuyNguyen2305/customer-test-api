@@ -1,6 +1,12 @@
 import { NotFoundError } from '#configs/error.js';
 import { sequelize } from '#common/sequelize.js';
-import { computeEntityTotals, recomputeItems, toNumberOrNull } from './billing-calculation.util.js';
+import {
+  computeEntityTotals,
+  recomputeItems,
+  toNumberOrNull,
+  flattenTaxSlots,
+  nestTaxSlotsPatch,
+} from './billing-calculation.util.js';
 
 const PORTAL_VISIBLE_STATUSES = ['sent', 'approved'];
 const STATUS_LABELS = { sent: 'Open', approved: 'Accepted' };
@@ -21,7 +27,11 @@ export function toEstimateData(estimate) {
     notesText: estimate.notesText,
     status: estimate.status,
     statusLabel: STATUS_LABELS[estimate.status],
-    ...computeEntityTotals(estimate),
+    ...computeEntityTotals({
+      items: estimate.items?.map(flattenTaxSlots),
+      discountType: estimate.discountType,
+      discountValue: estimate.discountValue,
+    }),
     ...(estimate.items && {
       items: estimate.items.map((item) => ({
         id: item.id,
@@ -32,14 +42,14 @@ export function toEstimateData(estimate) {
         qty: item.qty,
         sortOrder: item.sortOrder,
         subtotal: toNumberOrNull(item.subtotal),
-        tax1RateId: item.tax1RateId,
-        tax1Name: item.tax1Name,
-        tax1Rate: toNumberOrNull(item.tax1Rate),
-        tax1Total: toNumberOrNull(item.tax1Total),
-        tax2RateId: item.tax2RateId,
-        tax2Name: item.tax2Name,
-        tax2Rate: toNumberOrNull(item.tax2Rate),
-        tax2Total: toNumberOrNull(item.tax2Total),
+        tax1RateId: item.taxSlots?.tax1RateId ?? null,
+        tax1Name: item.taxSlots?.tax1Name ?? null,
+        tax1Rate: toNumberOrNull(item.taxSlots?.tax1Rate),
+        tax1Total: toNumberOrNull(item.taxSlots?.tax1Total),
+        tax2RateId: item.taxSlots?.tax2RateId ?? null,
+        tax2Name: item.taxSlots?.tax2Name ?? null,
+        tax2Rate: toNumberOrNull(item.taxSlots?.tax2Rate),
+        tax2Total: toNumberOrNull(item.taxSlots?.tax2Total),
         total: toNumberOrNull(item.total),
       })),
     }),
@@ -52,29 +62,44 @@ class CustomerEstimateService {
     customerEstimateItemRepository,
     invoiceGenerationService,
     customerInvoiceService,
+    taxRateRepository,
   }) {
     this.customerEstimateRepository = customerEstimateRepository;
     this.customerEstimateItemRepository = customerEstimateItemRepository;
     this.invoiceGenerationService = invoiceGenerationService;
     this.customerInvoiceService = customerInvoiceService;
+    this.taxRateRepository = taxRateRepository;
   }
 
   // Estimates have no write endpoints in this app - items are created
   // elsewhere, so the only way to keep each item's persisted subtotal/tax/
   // total columns from going stale is to recompute and overwrite them on
-  // every read. Snapshots tax1Name/tax1Rate off the preloaded Tax1Rate/
-  // Tax2Rate associations, then mutates estimate.items in place so the
-  // caller's response reflects the fresh computation without a re-fetch.
+  // every read. Snapshots tax1Name/tax1Rate off a batched TaxRate lookup
+  // (tax1RateId/tax2RateId live inside taxSlots, not as real FK columns, so
+  // there's no live association to include() a join through anymore), then
+  // mutates estimate.items in place so the caller's response reflects the
+  // fresh computation without a re-fetch.
   async refreshItemCache(estimate) {
     const items = estimate.items ?? [];
+    const rateIds = [
+      ...new Set(items.flatMap((item) => [item.taxSlots?.tax1RateId, item.taxSlots?.tax2RateId]).filter(Boolean)),
+    ];
+    const taxRates = rateIds.length ? await this.taxRateRepository.findByIds(rateIds) : [];
+    const taxRatesById = new Map(taxRates.map((rate) => [rate.id, rate]));
+
     for (const item of items) {
-      item.tax1Name = item.Tax1Rate?.name ?? null;
-      item.tax1Rate = item.Tax1Rate?.rate ?? null;
-      item.tax2Name = item.Tax2Rate?.name ?? null;
-      item.tax2Rate = item.Tax2Rate?.rate ?? null;
+      const tax1Rate = taxRatesById.get(item.taxSlots?.tax1RateId);
+      const tax2Rate = taxRatesById.get(item.taxSlots?.tax2RateId);
+      item.taxSlots = {
+        ...item.taxSlots,
+        tax1Name: tax1Rate?.name ?? null,
+        tax1Rate: tax1Rate?.rate ?? null,
+        tax2Name: tax2Rate?.name ?? null,
+        tax2Rate: tax2Rate?.rate ?? null,
+      };
     }
 
-    const patches = recomputeItems(items, estimate);
+    const patches = recomputeItems(items.map(flattenTaxSlots), estimate).map(nestTaxSlotsPatch);
     await sequelize.transaction((transaction) =>
       this.customerEstimateItemRepository.updateMany(patches, { transaction }),
     );

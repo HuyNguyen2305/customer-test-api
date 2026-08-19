@@ -11,7 +11,9 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests test/unit",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests --runInBand test/integration",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "migrate:undo": "node scripts/migrate-down.js",
+    "migrate:status": "sequelize-cli db:migrate:status --config config/config.cjs --migrations-path migration --models-path src/models"
   },
   "keywords": [],
   "author": "",

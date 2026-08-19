@@ -29,14 +29,14 @@ class RecurringBookingGeneratorService {
 
     for (const service of services) {
       const recurrence = service.ServiceRecurrence;
-      if (!recurrence || recurrence.repeatType === 'off') continue;
+      if (!recurrence || recurrence.recurrenceRule.repeatType === 'off') continue;
 
       const customerRows = await this.bookingRepository.findDistinctCustomersByService(service.id);
       for (const { customerId } of customerRows) {
         const latestBooking = await this.bookingRepository.findLatestByServiceAndCustomer(service.id, customerId);
         if (!latestBooking) continue;
 
-        const candidates = computeNextOccurrences(recurrence, {
+        const candidates = computeNextOccurrences(recurrence.recurrenceRule, {
           anchorDate: latestBooking.startTime,
           windowStart: now,
           windowEnd,

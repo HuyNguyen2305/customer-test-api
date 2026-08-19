@@ -64,10 +64,10 @@ describe('CustomerInvoiceItemService.updateItem', () => {
         .fn()
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 20 }),
     };
-    const sibling = { id: 'ii2', cost: 30, qty: 1, tax1Rate: 5 };
+    const sibling = { id: 'ii2', cost: 30, qty: 1, taxSlots: { tax1Rate: 5 } };
     service.customerInvoiceItemRepository = buildInvoiceItemRepository({
       updated,
-      listed: [{ id: 'ii1', cost: 50, qty: 2, tax1Rate: null }, sibling],
+      listed: [{ id: 'ii1', cost: 50, qty: 2, taxSlots: { tax1Rate: null } }, sibling],
     });
 
     await service.updateItem('c1', 'i1', 'ii1', { qty: 2 });

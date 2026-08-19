@@ -36,7 +36,6 @@ import RecurringBookingGeneratorService from '#service/recurring-booking-generat
 import JobSnapshotService from '#service/job-snapshot.service.js';
 import JobSyncService from '#service/job-sync.service.js';
 import JobMaterialService from '#service/job-material.service.js';
-import JobTodoService from '#service/job-todo.service.js';
 import InvoiceGenerationService from '#service/invoice-generation.service.js';
 import LedgerService from '#service/ledger.service.js';
 import ServiceLifecycleService from '#service/service-lifecycle.service.js';
@@ -123,7 +122,6 @@ container.register({
   [SERVICE_KEYS.JOB_SNAPSHOT_SERVICE]: asClass(JobSnapshotService).scoped(),
   [SERVICE_KEYS.JOB_SYNC_SERVICE]: asClass(JobSyncService).scoped(),
   [SERVICE_KEYS.JOB_MATERIAL_SERVICE]: asClass(JobMaterialService).scoped(),
-  [SERVICE_KEYS.JOB_TODO_SERVICE]: asClass(JobTodoService).scoped(),
   [SERVICE_KEYS.INVOICE_GENERATION_SERVICE]: asClass(InvoiceGenerationService).scoped(),
   [SERVICE_KEYS.LEDGER_SERVICE]: asClass(LedgerService).scoped(),
   [SERVICE_KEYS.SERVICE_LIFECYCLE_SERVICE]: asClass(ServiceLifecycleService).scoped(),

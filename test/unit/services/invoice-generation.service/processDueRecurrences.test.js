@@ -36,7 +36,7 @@ function buildService({
 describe('InvoiceGenerationService.processDueRecurrences', () => {
   it('skips frequencies with no invoice ever generated under that schedule', async () => {
     const service = buildService({
-      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'monthly' }],
+      frequencies: [{ serviceInvoiceId: 'si1', recurrenceRule: { repeatType: 'monthly' } }],
       invoicesBySourceId: {},
     });
 
@@ -49,7 +49,9 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
   it('creates a follow-up invoice for a calendar-based frequency once the next period is due', async () => {
     const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
     const service = buildService({
-      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' }],
+      frequencies: [
+        { serviceInvoiceId: 'si1', recurrenceRule: { repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' } },
+      ],
       invoicesBySourceId: { si1: [latestInvoice] },
     });
 
@@ -72,7 +74,9 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
   it('catches up on every overdue period, not just the first, when a run is late', async () => {
     const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
     const service = buildService({
-      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' }],
+      frequencies: [
+        { serviceInvoiceId: 'si1', recurrenceRule: { repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' } },
+      ],
       invoicesBySourceId: { si1: [latestInvoice] },
     });
 
@@ -97,7 +101,9 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
   it('does not double-generate a follow-up invoice when run twice for the same period', async () => {
     const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
     const service = buildService({
-      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' }],
+      frequencies: [
+        { serviceInvoiceId: 'si1', recurrenceRule: { repeatType: 'monthly', interval: 1, repeatBy: 'day_of_month' } },
+      ],
       invoicesBySourceId: { si1: [latestInvoice] },
     });
     const asOf = new Date('2026-01-15');
@@ -121,7 +127,13 @@ describe('InvoiceGenerationService.processDueRecurrences', () => {
   it('handles repeat_with_job by generating one follow-up invoice per new booking, skipping already-invoiced bookings', async () => {
     const latestInvoice = { bookingId: 'b1', customerId: 'c1', createdAt: new Date('2026-01-01') };
     const service = buildService({
-      frequencies: [{ serviceInvoiceId: 'si1', repeatType: 'repeat_with_job', ServiceInvoice: { serviceId: 's1' } }],
+      frequencies: [
+        {
+          serviceInvoiceId: 'si1',
+          recurrenceRule: { repeatType: 'repeat_with_job' },
+          ServiceInvoice: { serviceId: 's1' },
+        },
+      ],
       invoicesBySourceId: { si1: [latestInvoice] },
       newBookings: [
         { id: 'b2', customerId: 'c1' },

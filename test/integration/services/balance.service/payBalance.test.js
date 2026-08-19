@@ -64,8 +64,8 @@ describe('BalanceService.payBalance (integration)', () => {
         expect(chargeMock).toHaveBeenCalledWith({
           amount: balanceFixtures.balanceWithAmount.amount,
           currency: balanceFixtures.balanceWithAmount.currency,
-          sourceId: customerPaymentMethodFixtures.squareCard.token,
-          customerId: customerPaymentMethodFixtures.squareCard.gatewayCustomerId,
+          sourceId: customerPaymentMethodFixtures.squareCard.paymentDetails.token,
+          customerId: customerPaymentMethodFixtures.squareCard.paymentDetails.gatewayCustomerId,
           type: customerPaymentMethodFixtures.squareCard.type,
           idempotencyKey: expect.any(String),
         });
@@ -122,7 +122,7 @@ describe('BalanceService.payBalance (integration)', () => {
       async ({ seeded }) => {
         const service = buildService();
         const paymentMethodId = seeded.CustomerPaymentMethod[0].id;
-        const originalCreditBalance = Number(seeded.CustomerPaymentMethod[0].creditBalance);
+        const originalCreditBalance = Number(seeded.CustomerPaymentMethod[0].paymentDetails.creditBalance);
 
         // Force the ledger write inside the transaction to fail, after
         // decrementCredit has already run - proves the credit decrement
@@ -141,7 +141,7 @@ describe('BalanceService.payBalance (integration)', () => {
           paymentMethodId,
           balanceFixtures.balanceWithAmount.customerId,
         );
-        expect(Number(paymentMethodAfter.creditBalance)).toBe(originalCreditBalance);
+        expect(Number(paymentMethodAfter.paymentDetails.creditBalance)).toBe(originalCreditBalance);
       },
     );
   });

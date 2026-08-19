@@ -9,9 +9,9 @@ export function toPaymentMethodData(paymentMethod) {
   return {
     id: paymentMethod.id,
     type: paymentMethod.type,
-    token: paymentMethod.token,
-    gateway: paymentMethod.gateway,
-    creditBalance: toNumberOrNull(paymentMethod.creditBalance),
+    token: paymentMethod.paymentDetails?.token ?? null,
+    gateway: paymentMethod.paymentDetails?.gateway ?? null,
+    creditBalance: toNumberOrNull(paymentMethod.paymentDetails?.creditBalance),
     isDefault: paymentMethod.isDefault,
   };
 }
@@ -56,9 +56,7 @@ class CustomerPaymentMethodService {
     const created = await this.customerPaymentMethodRepository.addPaymentMethod({
       customerId,
       type,
-      gateway,
-      token: onFileId,
-      gatewayCustomerId,
+      paymentDetails: { token: onFileId, gateway, gatewayCustomerId },
       isDefault: existing.length === 0,
     });
     return toPaymentMethodData(created);

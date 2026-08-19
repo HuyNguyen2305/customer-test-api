@@ -687,8 +687,8 @@ describe('Customer portal GET endpoints (integration)', () => {
   });
 
   it('GET /customer/estimates/:id caches computed tax onto each item row (tax1RateId/tax1Total etc), self-consistently across repeated reads', async () => {
-    const taxRateNY = { id: 'aaaaaaaa-1111-2222-3333-444444444444', name: 'NY Sales Tax', code: 'NY', rate: 4 };
-    const taxRateTX = { id: 'aaaaaaaa-1111-2222-3333-555555555555', name: 'TX Sales Tax', code: 'TX', rate: 6.25 };
+    const taxRateNY = { id: 'aaaaaaaa-1111-2222-3333-444444444444', name: 'NY Sales Tax', rate: 4 };
+    const taxRateTX = { id: 'aaaaaaaa-1111-2222-3333-555555555555', name: 'TX Sales Tax', rate: 6.25 };
     const taxedEstimate = {
       id: 'aaaaaaaa-1111-2222-3333-666666666666',
       bookingId: bookingA.id,
@@ -702,7 +702,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       description: 'NY item',
       cost: 100,
       qty: 1,
-      tax1RateId: taxRateNY.id,
+      taxSlots: { tax1RateId: taxRateNY.id },
     };
     const taxedItem2 = {
       id: 'aaaaaaaa-1111-2222-3333-888888888888',
@@ -711,7 +711,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       description: 'TX item',
       cost: 100,
       qty: 1,
-      tax1RateId: taxRateTX.id,
+      taxSlots: { tax1RateId: taxRateTX.id },
     };
 
     // TaxRate must be created before CustomerEstimateItem (which references it
@@ -743,8 +743,8 @@ describe('Customer portal GET endpoints (integration)', () => {
       const itemsAfterFirst = await models.CustomerEstimateItem.schema(TEST_SCHEMA).findAll({
         where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
       });
-      expect(itemsAfterFirst.map((row) => Number(row.tax1Total)).sort()).toEqual([4, 6.25]);
-      expect(itemsAfterFirst.every((row) => row.tax1Name)).toBe(true);
+      expect(itemsAfterFirst.map((row) => Number(row.taxSlots.tax1Total)).sort()).toEqual([4, 6.25]);
+      expect(itemsAfterFirst.every((row) => row.taxSlots.tax1Name)).toBe(true);
 
       const second = await app.inject({
         method: 'GET',
@@ -759,14 +759,14 @@ describe('Customer portal GET endpoints (integration)', () => {
         where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
       });
       // Re-read must not change or duplicate anything - same 2 items, same amounts.
-      expect(itemsAfterSecond.map((row) => Number(row.tax1Total)).sort()).toEqual([4, 6.25]);
+      expect(itemsAfterSecond.map((row) => Number(row.taxSlots.tax1Total)).sort()).toEqual([4, 6.25]);
 
       await app.close();
     });
   });
 
   it('adding an untaxed line item to a draft invoice recomputes the discount ratio for its already-taxed sibling', async () => {
-    const taxRate = { id: 'bbbbbbbb-1111-2222-3333-444444444444', name: 'State Tax', code: 'ST', rate: 10 };
+    const taxRate = { id: 'bbbbbbbb-1111-2222-3333-444444444444', name: 'State Tax', rate: 10 };
     const cascadeInvoice = {
       id: 'bbbbbbbb-1111-2222-3333-555555555555',
       bookingId: bookingA.id,
@@ -786,9 +786,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       description: 'Taxed item',
       cost: 80,
       qty: 1,
-      tax1RateId: taxRate.id,
-      tax1Name: taxRate.name,
-      tax1Rate: taxRate.rate,
+      taxSlots: { tax1RateId: taxRate.id, tax1Name: taxRate.name, tax1Rate: taxRate.rate },
     };
 
     const seed = {
@@ -822,9 +820,9 @@ describe('Customer portal GET endpoints (integration)', () => {
       const combinedSubtotal = 80 + Number(item1.defaultCost);
       const expectedRatio = 20 / combinedSubtotal;
       const expectedTax1Total = 80 * (1 - expectedRatio) * 0.1;
-      // The column is DECIMAL(12,2), so Postgres rounds to cents on write.
-      expect(Number(taxedRow.tax1Total)).toBeCloseTo(expectedTax1Total, 2);
-      expect(untaxedRow.tax1RateId).toBeNull();
+      // The field is DECIMAL(12,2) inside the JSONB, so Postgres rounds to cents on write.
+      expect(Number(taxedRow.taxSlots.tax1Total)).toBeCloseTo(expectedTax1Total, 2);
+      expect(untaxedRow.taxSlots.tax1RateId).toBeNull();
 
       await app.close();
     });

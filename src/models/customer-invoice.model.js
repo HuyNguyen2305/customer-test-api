@@ -27,32 +27,8 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
-      addressLabel: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressLine1: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressLine2: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressCity: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressState: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressZip: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      addressCountry: {
-        type: DataTypes.STRING,
+      addressSnapshot: {
+        type: DataTypes.JSONB,
         allowNull: true,
       },
       discountValue: {

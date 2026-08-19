@@ -3,7 +3,7 @@ import { UniqueConstraintError } from 'sequelize';
 import { sequelize } from '#common/sequelize.js';
 import { ConflictError, NotFoundError } from '#configs/error.js';
 import { computeNextOccurrences } from './recurrence/recurrence-rule.util.js';
-import { recomputeItems } from './billing-calculation.util.js';
+import { recomputeItems, flattenTaxSlots, nestTaxSlotsPatch } from './billing-calculation.util.js';
 
 class InvoiceGenerationService {
   constructor({
@@ -34,7 +34,7 @@ class InvoiceGenerationService {
   // set and rewrites each one's subtotal/tax/total columns.
   async recomputeInvoiceItems(invoice, options = {}) {
     const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, options);
-    const patches = recomputeItems(items, invoice);
+    const patches = recomputeItems(items.map(flattenTaxSlots), invoice).map(nestTaxSlotsPatch);
     await this.customerInvoiceItemRepository.updateMany(patches, options);
   }
 
@@ -49,13 +49,15 @@ class InvoiceGenerationService {
 
     return {
       addressId: address.id,
-      addressLabel: address.label,
-      addressLine1: address.line1,
-      addressLine2: address.line2,
-      addressCity: address.city,
-      addressState: address.state,
-      addressZip: address.zip,
-      addressCountry: address.country,
+      addressSnapshot: {
+        addressLabel: address.label,
+        addressLine1: address.line1,
+        addressLine2: address.line2,
+        addressCity: address.city,
+        addressState: address.state,
+        addressZip: address.zip,
+        addressCountry: address.country,
+      },
     };
   }
 
@@ -85,7 +87,7 @@ class InvoiceGenerationService {
   // snapshot: a later edit to the master TaxRate must not retroactively
   // change this invoice. Must run after copyLineItems so the items exist.
   async attachAutoTax(invoice, addressSnapshot, options = {}) {
-    const state = addressSnapshot?.addressState;
+    const state = addressSnapshot?.addressSnapshot?.addressState;
     if (!state) return;
 
     const taxRate = await this.taxRateRepository.findByState(state);
@@ -97,9 +99,7 @@ class InvoiceGenerationService {
     await this.customerInvoiceItemRepository.updateMany(
       items.map((item) => ({
         id: item.id,
-        tax1RateId: taxRate.id,
-        tax1Name: taxRate.name,
-        tax1Rate: taxRate.rate,
+        taxSlots: { ...item.taxSlots, tax1RateId: taxRate.id, tax1Name: taxRate.name, tax1Rate: taxRate.rate },
       })),
       options,
     );
@@ -136,12 +136,14 @@ class InvoiceGenerationService {
         cost: item.cost,
         qty: item.qty,
         sortOrder: item.sortOrder,
-        tax1RateId: item.tax1RateId,
-        tax1Name: item.tax1Name,
-        tax1Rate: item.tax1Rate,
-        tax2RateId: item.tax2RateId,
-        tax2Name: item.tax2Name,
-        tax2Rate: item.tax2Rate,
+        taxSlots: {
+          tax1RateId: item.taxSlots?.tax1RateId,
+          tax1Name: item.taxSlots?.tax1Name,
+          tax1Rate: item.taxSlots?.tax1Rate,
+          tax2RateId: item.taxSlots?.tax2RateId,
+          tax2Name: item.taxSlots?.tax2Name,
+          tax2Rate: item.taxSlots?.tax2Rate,
+        },
       })),
       options,
     );
@@ -238,7 +240,7 @@ class InvoiceGenerationService {
 
       const latestInvoice = existingInvoices[0];
 
-      if (frequency.repeatType === 'repeat_with_job') {
+      if (frequency.recurrenceRule.repeatType === 'repeat_with_job') {
         const serviceInvoice = frequency.ServiceInvoice;
         if (!serviceInvoice) continue;
 
@@ -269,7 +271,7 @@ class InvoiceGenerationService {
         continue;
       }
 
-      const dueDates = computeNextOccurrences(frequency, {
+      const dueDates = computeNextOccurrences(frequency.recurrenceRule, {
         anchorDate: latestInvoice.createdAt,
         windowStart: latestInvoice.createdAt,
         windowEnd: asOf,

@@ -46,8 +46,8 @@ class CustomerInvoiceRepository extends BaseRepository {
       // even though it stays in the query.
       attributes: { exclude: ['updatedAt'] },
       // No 'address' join: toInvoiceData builds addressLabel/addressLine1/etc.
-      // from denormalized columns already on this row, never from the
-      // associated Address.
+      // from the addressSnapshot JSONB column already on this row, never from
+      // the associated Address.
       include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
     });
   }

@@ -75,10 +75,10 @@ describe('CustomerInvoiceItemService.addItem', () => {
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 20 }),
     };
     service.itemRepository = { findByPk: jest.fn().mockResolvedValue({ id: 'item2', defaultCost: 50 }) };
-    const existingSibling = { id: 'ii1', cost: 30, qty: 1, tax1Rate: 5 };
+    const existingSibling = { id: 'ii1', cost: 30, qty: 1, taxSlots: { tax1Rate: 5 } };
     service.customerInvoiceItemRepository = buildInvoiceItemRepository({
       created,
-      listed: [existingSibling, { id: 'ii2', cost: 50, qty: 1, tax1Rate: null }],
+      listed: [existingSibling, { id: 'ii2', cost: 50, qty: 1, taxSlots: { tax1Rate: null } }],
     });
 
     await service.addItem('c1', 'i1', { itemId: 'item2', qty: 1 });
@@ -88,7 +88,7 @@ describe('CustomerInvoiceItemService.addItem', () => {
     });
     const [patches] = service.customerInvoiceItemRepository.updateMany.mock.calls[0];
     // subtotal 80, discount 20 -> ratio 0.25 -> sibling's taxable base 30*0.75=22.5, tax 5% = 1.125
-    expect(patches.find((p) => p.id === 'ii1').tax1Total).toBe(1.125);
+    expect(patches.find((p) => p.id === 'ii1').taxSlots.tax1Total).toBe(1.125);
   });
 
   it('throws NotFoundError when the referenced item does not exist', async () => {

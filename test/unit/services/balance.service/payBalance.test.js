@@ -49,9 +49,7 @@ describe('BalanceService.payBalance', () => {
     const paymentMethod = {
       id: 'pm1',
       type: 'card',
-      gateway: 'square',
-      token: 'sq_card_1',
-      gatewayCustomerId: 'sq_cust_1',
+      paymentDetails: { gateway: 'square', token: 'sq_card_1', gatewayCustomerId: 'sq_cust_1' },
     };
     const service = buildService({ balance, paymentMethod });
     service.balanceRepository.getBalance.mockResolvedValueOnce(balance).mockResolvedValueOnce(paidOffBalance);
@@ -85,9 +83,7 @@ describe('BalanceService.payBalance', () => {
     const paymentMethod = {
       id: 'pm2',
       type: 'card',
-      gateway: 'stripe',
-      token: 'pm_stripe_1',
-      gatewayCustomerId: 'cus_stripe_1',
+      paymentDetails: { gateway: 'stripe', token: 'pm_stripe_1', gatewayCustomerId: 'cus_stripe_1' },
     };
     const service = buildService({ balance, paymentMethod });
 
@@ -109,9 +105,7 @@ describe('BalanceService.payBalance', () => {
     const paymentMethod = {
       id: 'pm4',
       type: 'bank',
-      gateway: 'stripe',
-      token: 'pm_bank_1',
-      gatewayCustomerId: 'cus_stripe_1',
+      paymentDetails: { gateway: 'stripe', token: 'pm_bank_1', gatewayCustomerId: 'cus_stripe_1' },
     };
     const service = buildService({ balance, paymentMethod });
 
@@ -129,7 +123,7 @@ describe('BalanceService.payBalance', () => {
 
   it('pays via open credit without touching any gateway, when there is enough credit', async () => {
     const balance = { customerId: 'c1', amount: 30, currency: 'USD' };
-    const paymentMethod = { id: 'pm3', type: 'open_credit', creditBalance: 50 };
+    const paymentMethod = { id: 'pm3', type: 'open_credit', paymentDetails: { creditBalance: 50 } };
     const service = buildService({ balance, paymentMethod });
 
     await service.payBalance('c1', 'pm3');
@@ -147,7 +141,7 @@ describe('BalanceService.payBalance', () => {
 
   it('throws BadRequestError when open credit is insufficient', async () => {
     const balance = { customerId: 'c1', amount: 100, currency: 'USD' };
-    const paymentMethod = { id: 'pm3', type: 'open_credit', creditBalance: 20 };
+    const paymentMethod = { id: 'pm3', type: 'open_credit', paymentDetails: { creditBalance: 20 } };
     const service = buildService({ balance, paymentMethod });
 
     await expect(service.payBalance('c1', 'pm3')).rejects.toThrow(BadRequestError);
@@ -176,7 +170,11 @@ describe('BalanceService.payBalance', () => {
   it('propagates gateway charge failures without recording a payment', async () => {
     const service = buildService({
       balance: { customerId: 'c1', amount: 50, currency: 'USD' },
-      paymentMethod: { id: 'pm1', type: 'card', gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+      paymentMethod: {
+        id: 'pm1',
+        type: 'card',
+        paymentDetails: { gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+      },
     });
     chargeMock.mockRejectedValueOnce(new Error('card declined'));
 
@@ -186,7 +184,11 @@ describe('BalanceService.payBalance', () => {
   });
 
   it('generates a fresh idempotency key per attempt rather than reusing one across calls', async () => {
-    const paymentMethod = { id: 'pm1', type: 'card', gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' };
+    const paymentMethod = {
+      id: 'pm1',
+      type: 'card',
+      paymentDetails: { gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+    };
     const service = buildService({ balance: { customerId: 'c1', amount: 50, currency: 'USD' }, paymentMethod });
 
     await service.payBalance('c1', 'pm1');
@@ -201,7 +203,11 @@ describe('BalanceService.payBalance', () => {
   it('propagates an error thrown inside the post-charge transaction instead of swallowing it', async () => {
     const service = buildService({
       balance: { customerId: 'c1', amount: 50, currency: 'USD' },
-      paymentMethod: { id: 'pm1', type: 'card', gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+      paymentMethod: {
+        id: 'pm1',
+        type: 'card',
+        paymentDetails: { gateway: 'square', token: 'sq_1', gatewayCustomerId: 'sq_cust_1' },
+      },
     });
     service.ledgerService.recordPayment.mockRejectedValueOnce(new Error('ledger write failed'));
 

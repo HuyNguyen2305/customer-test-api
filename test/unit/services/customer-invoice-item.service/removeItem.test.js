@@ -42,7 +42,7 @@ describe('CustomerInvoiceItemService.removeItem', () => {
         .fn()
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    const remaining = { id: 'ii2', cost: 30, qty: 1, tax1Rate: 5 };
+    const remaining = { id: 'ii2', cost: 30, qty: 1, taxSlots: { tax1Rate: 5 } };
     service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: true, listed: [remaining] });
 
     await service.removeItem('c1', 'i1', 'ii1');

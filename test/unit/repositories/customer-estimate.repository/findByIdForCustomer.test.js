@@ -4,18 +4,16 @@ const { default: CustomerEstimateRepository } = await import('#repositories/cust
 const { requestContext } = await import('#common/request-context.js');
 
 describe('CustomerEstimateRepository.findByIdForCustomer', () => {
-  it('scopes the lookup by both id and customerId, and includes line items (with both tax rate slots) - no Booking/Address/Customer join', async () => {
+  it('scopes the lookup by both id and customerId, and includes line items - no Booking/Address/Customer join', async () => {
     const estimate = { id: 'e1', customerId: 'c1' };
     const scopedModel = { findOne: jest.fn().mockResolvedValue(estimate) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
-    const scopedTaxRateModel = {};
     const scopedItemDefModel = {};
     const customerEstimateItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerEstimateRepository.prototype);
     repository.model = model;
     repository.customerEstimateItemModel = customerEstimateItemModel;
-    repository.taxRateModel = { schema: jest.fn().mockReturnValue(scopedTaxRateModel) };
     repository.itemModel = { schema: jest.fn().mockReturnValue(scopedItemDefModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
@@ -30,11 +28,7 @@ describe('CustomerEstimateRepository.findByIdForCustomer', () => {
         {
           model: scopedItemModel,
           as: 'items',
-          include: [
-            { model: scopedTaxRateModel, as: 'Tax1Rate', attributes: ['name', 'rate'] },
-            { model: scopedTaxRateModel, as: 'Tax2Rate', attributes: ['name', 'rate'] },
-            { model: scopedItemDefModel, attributes: ['name'] },
-          ],
+          include: [{ model: scopedItemDefModel, attributes: ['name'] }],
         },
       ],
     });

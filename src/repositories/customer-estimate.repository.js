@@ -7,7 +7,6 @@ class CustomerEstimateRepository extends BaseRepository {
     bookingModel,
     addressModel,
     customerModel,
-    taxRateModel,
     itemModel,
   }) {
     super(customerEstimateModel);
@@ -15,18 +14,7 @@ class CustomerEstimateRepository extends BaseRepository {
     this.bookingModel = bookingModel;
     this.addressModel = addressModel;
     this.customerModel = customerModel;
-    this.taxRateModel = taxRateModel;
     this.itemModel = itemModel;
-  }
-
-  // Only .name/.rate are ever read (toEstimateData snapshots them onto the
-  // item's tax1Name/tax1Rate columns), so both tax rate joins are trimmed to
-  // just those two columns.
-  itemIncludes() {
-    return [
-      { model: this.scopeModel(this.taxRateModel), as: 'Tax1Rate', attributes: ['name', 'rate'] },
-      { model: this.scopeModel(this.taxRateModel), as: 'Tax2Rate', attributes: ['name', 'rate'] },
-    ];
   }
 
   listByCustomerId(customerId, { limit, offset, addressId, statuses } = {}) {
@@ -42,7 +30,7 @@ class CustomerEstimateRepository extends BaseRepository {
       // even though it stays in the query (same fix as the invoice repository).
       attributes: { exclude: ['updatedAt'] },
       include: [
-        { model: this.scopeModel(this.customerEstimateItemModel), as: 'items', include: this.itemIncludes() },
+        { model: this.scopeModel(this.customerEstimateItemModel), as: 'items' },
         ...(addressId
           ? [{ model: this.scopeModel(this.bookingModel), attributes: [], where: { addressId }, required: true }]
           : []),
@@ -65,7 +53,7 @@ class CustomerEstimateRepository extends BaseRepository {
         {
           model: this.scopeModel(this.customerEstimateItemModel),
           as: 'items',
-          include: [...this.itemIncludes(), { model: this.scopeModel(this.itemModel), attributes: ['name'] }],
+          include: [{ model: this.scopeModel(this.itemModel), attributes: ['name'] }],
         },
       ],
     });
@@ -82,7 +70,7 @@ class CustomerEstimateRepository extends BaseRepository {
         {
           model: this.scopeModel(this.customerEstimateItemModel),
           as: 'items',
-          include: [...this.itemIncludes(), { model: this.scopeModel(this.itemModel), attributes: ['name'] }],
+          include: [{ model: this.scopeModel(this.itemModel), attributes: ['name'] }],
         },
         {
           model: this.scopeModel(this.bookingModel),

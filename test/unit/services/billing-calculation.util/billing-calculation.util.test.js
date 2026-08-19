@@ -3,6 +3,8 @@ import {
   computeItemAmounts,
   recomputeItems,
   computeEntityTotals,
+  flattenTaxSlots,
+  nestTaxSlotsPatch,
 } from '#service/billing-calculation.util.js';
 
 describe('computeDiscountRatio', () => {
@@ -152,5 +154,85 @@ describe('computeEntityTotals', () => {
     });
 
     expect(result.subtotal).toBe(80);
+  });
+});
+
+describe('flattenTaxSlots', () => {
+  it('spreads a nested taxSlots object onto the item as flat keys', () => {
+    const item = { id: 'ii1', cost: 30, qty: 1, taxSlots: { tax1RateId: 't1', tax1Rate: 5 } };
+
+    expect(flattenTaxSlots(item)).toEqual({
+      id: 'ii1',
+      cost: 30,
+      qty: 1,
+      taxSlots: { tax1RateId: 't1', tax1Rate: 5 },
+      tax1RateId: 't1',
+      tax1Rate: 5,
+    });
+  });
+
+  it('leaves the item unchanged (no flat tax keys added) when taxSlots is absent', () => {
+    const item = { id: 'ii1', cost: 30, qty: 1 };
+
+    expect(flattenTaxSlots(item)).toEqual({ id: 'ii1', cost: 30, qty: 1 });
+  });
+
+  it('reads through .get({plain:true}) instead of spreading the instance directly, for a Sequelize-instance-shaped item', () => {
+    // Real Sequelize instances expose attributes as prototype getters, not own
+    // enumerable properties - {...item} silently drops all real data and only
+    // copies bookkeeping fields (dataValues, _changed, etc). This test's fake
+    // instance mimics that shape (data reachable only via .get(), not via a
+    // bare spread) so a regression back to a plain `{...item, ...item.taxSlots}`
+    // would fail here even though it might look fine against a plain object.
+    const fakeSequelizeInstance = {
+      dataValues: { id: 'ii1', cost: 30, qty: 1, taxSlots: { tax1RateId: 't1', tax1Rate: 5 } },
+      get({ plain }) {
+        if (!plain) throw new Error('flattenTaxSlots must call get({ plain: true })');
+        return { id: 'ii1', cost: 30, qty: 1, taxSlots: { tax1RateId: 't1', tax1Rate: 5 } };
+      },
+    };
+
+    expect(flattenTaxSlots(fakeSequelizeInstance)).toEqual({
+      id: 'ii1',
+      cost: 30,
+      qty: 1,
+      taxSlots: { tax1RateId: 't1', tax1Rate: 5 },
+      tax1RateId: 't1',
+      tax1Rate: 5,
+    });
+  });
+});
+
+describe('nestTaxSlotsPatch', () => {
+  it('buckets the 8 tax keys under taxSlots, leaving id/subtotal/total flat', () => {
+    const flatPatch = {
+      id: 'ii1',
+      subtotal: 100,
+      tax1RateId: 't1',
+      tax1Name: 'NY',
+      tax1Rate: 4,
+      tax1Total: 4,
+      tax2RateId: null,
+      tax2Name: null,
+      tax2Rate: null,
+      tax2Total: null,
+      total: 104,
+    };
+
+    expect(nestTaxSlotsPatch(flatPatch)).toEqual({
+      id: 'ii1',
+      subtotal: 100,
+      total: 104,
+      taxSlots: {
+        tax1RateId: 't1',
+        tax1Name: 'NY',
+        tax1Rate: 4,
+        tax1Total: 4,
+        tax2RateId: null,
+        tax2Name: null,
+        tax2Rate: null,
+        tax2Total: null,
+      },
+    });
   });
 });

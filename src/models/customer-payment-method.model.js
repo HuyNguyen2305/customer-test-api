@@ -15,25 +15,12 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.ENUM('card', 'bank', 'other', 'open_credit'),
         allowNull: false,
       },
-      // Gateway card-on-file id (Square card id / Stripe PaymentMethod id). Null for
-      // 'open_credit' rows, which have no external processor.
-      token: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      gateway: {
-        type: DataTypes.ENUM('stripe', 'square'),
-        allowNull: true,
-      },
-      // Denormalized copy of customers.squareCustomerId/stripeCustomerId for this row's
-      // gateway, read at charge time to avoid a second Customer lookup per payment.
-      gatewayCustomerId: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      // Only populated on 'open_credit' rows — the available store-credit amount.
-      creditBalance: {
-        type: DataTypes.DECIMAL(12, 2),
+      // Gateway/credit fields, keyed by row type: card/bank rows carry token+gateway+
+      // gatewayCustomerId (a denormalized copy of customers.squareCustomerId/stripeCustomerId,
+      // read at charge time to avoid a second Customer lookup per payment); open_credit rows
+      // carry creditBalance instead. The two shapes never overlap on the same row.
+      paymentDetails: {
+        type: DataTypes.JSONB,
         allowNull: true,
       },
       isDefault: {

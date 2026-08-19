@@ -27,7 +27,9 @@ function buildService({
 describe('RecurringBookingGeneratorService.run', () => {
   it('skips services whose recurrence repeatType is off', async () => {
     const service = buildService({
-      services: [{ id: 's1', ServiceRecurrence: { repeatType: 'off' }, lengthHours: 1, lengthMinutes: 0 }],
+      services: [
+        { id: 's1', ServiceRecurrence: { recurrenceRule: { repeatType: 'off' } }, lengthHours: 1, lengthMinutes: 0 },
+      ],
     });
 
     const result = await service.run({ now: new Date('2026-01-01') });
@@ -43,7 +45,7 @@ describe('RecurringBookingGeneratorService.run', () => {
       services: [
         {
           id: 's1',
-          ServiceRecurrence: { repeatType: 'daily', interval: 1 },
+          ServiceRecurrence: { recurrenceRule: { repeatType: 'daily', interval: 1 } },
           lengthHours: 1,
           lengthMinutes: 30,
           setToConfirmed: false,
@@ -68,7 +70,12 @@ describe('RecurringBookingGeneratorService.run', () => {
     const existingByKey = {};
     const service = buildService({
       services: [
-        { id: 's1', ServiceRecurrence: { repeatType: 'daily', interval: 1 }, lengthHours: 1, lengthMinutes: 0 },
+        {
+          id: 's1',
+          ServiceRecurrence: { recurrenceRule: { repeatType: 'daily', interval: 1 } },
+          lengthHours: 1,
+          lengthMinutes: 0,
+        },
       ],
       customersByService: { s1: [{ customerId: 'c1' }] },
       latestBookingByCustomer: { 's1:c1': latestBooking },
@@ -92,7 +99,12 @@ describe('RecurringBookingGeneratorService.run', () => {
   it('skips customers with no prior booking for the service', async () => {
     const service = buildService({
       services: [
-        { id: 's1', ServiceRecurrence: { repeatType: 'daily', interval: 1 }, lengthHours: 1, lengthMinutes: 0 },
+        {
+          id: 's1',
+          ServiceRecurrence: { recurrenceRule: { repeatType: 'daily', interval: 1 } },
+          lengthHours: 1,
+          lengthMinutes: 0,
+        },
       ],
       customersByService: { s1: [{ customerId: 'c1' }] },
       latestBookingByCustomer: {},

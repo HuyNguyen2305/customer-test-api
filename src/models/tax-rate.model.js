@@ -11,18 +11,10 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      code: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
       rate: {
         type: DataTypes.DECIMAL(6, 3),
         allowNull: false,
         defaultValue: 0,
-      },
-      type: {
-        type: DataTypes.STRING,
-        allowNull: true,
       },
       country: {
         type: DataTypes.STRING,
@@ -30,14 +22,6 @@ export default (sequelize, DataTypes) => {
       },
       state: {
         type: DataTypes.STRING,
-        allowNull: true,
-      },
-      effectiveFrom: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-      },
-      effectiveTo: {
-        type: DataTypes.DATEONLY,
         allowNull: true,
       },
     },

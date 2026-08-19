@@ -1,5 +1,5 @@
 import { NotFoundError } from '#configs/error.js';
-import { computeEntityTotals, toNumberOrNull } from './billing-calculation.util.js';
+import { computeEntityTotals, toNumberOrNull, flattenTaxSlots } from './billing-calculation.util.js';
 
 // Only 'sent' has a portal-facing label today: that's the status the client
 // portal's "Pay My Balance" screen groups under "Open" once an admin sends
@@ -21,14 +21,18 @@ export function toInvoiceData(invoice) {
     statusLabel: STATUS_LABELS[invoice.status] ?? null,
     balanceDue: invoice.balanceDue,
     addressId: invoice.addressId,
-    addressLabel: invoice.addressLabel,
-    addressLine1: invoice.addressLine1,
-    addressLine2: invoice.addressLine2,
-    addressCity: invoice.addressCity,
-    addressState: invoice.addressState,
-    addressZip: invoice.addressZip,
-    addressCountry: invoice.addressCountry,
-    ...computeEntityTotals(invoice),
+    addressLabel: invoice.addressSnapshot?.addressLabel ?? null,
+    addressLine1: invoice.addressSnapshot?.addressLine1 ?? null,
+    addressLine2: invoice.addressSnapshot?.addressLine2 ?? null,
+    addressCity: invoice.addressSnapshot?.addressCity ?? null,
+    addressState: invoice.addressSnapshot?.addressState ?? null,
+    addressZip: invoice.addressSnapshot?.addressZip ?? null,
+    addressCountry: invoice.addressSnapshot?.addressCountry ?? null,
+    ...computeEntityTotals({
+      items: invoice.items?.map(flattenTaxSlots),
+      discountType: invoice.discountType,
+      discountValue: invoice.discountValue,
+    }),
     ...(invoice.items && {
       items: invoice.items.map((item) => ({
         id: item.id,
@@ -38,14 +42,14 @@ export function toInvoiceData(invoice) {
         qty: item.qty,
         sortOrder: item.sortOrder,
         subtotal: toNumberOrNull(item.subtotal),
-        tax1RateId: item.tax1RateId,
-        tax1Name: item.tax1Name,
-        tax1Rate: toNumberOrNull(item.tax1Rate),
-        tax1Total: toNumberOrNull(item.tax1Total),
-        tax2RateId: item.tax2RateId,
-        tax2Name: item.tax2Name,
-        tax2Rate: toNumberOrNull(item.tax2Rate),
-        tax2Total: toNumberOrNull(item.tax2Total),
+        tax1RateId: item.taxSlots?.tax1RateId ?? null,
+        tax1Name: item.taxSlots?.tax1Name ?? null,
+        tax1Rate: toNumberOrNull(item.taxSlots?.tax1Rate),
+        tax1Total: toNumberOrNull(item.taxSlots?.tax1Total),
+        tax2RateId: item.taxSlots?.tax2RateId ?? null,
+        tax2Name: item.taxSlots?.tax2Name ?? null,
+        tax2Rate: toNumberOrNull(item.taxSlots?.tax2Rate),
+        tax2Total: toNumberOrNull(item.taxSlots?.tax2Total),
         total: toNumberOrNull(item.total),
       })),
     }),

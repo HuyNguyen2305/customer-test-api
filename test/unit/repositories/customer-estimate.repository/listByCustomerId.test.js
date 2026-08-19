@@ -7,27 +7,20 @@ function buildRepository({ withBooking = false } = {}) {
   const scopedModel = { findAndCountAll: jest.fn().mockResolvedValue({ rows: [], count: 0 }) };
   const model = { schema: jest.fn().mockReturnValue(scopedModel) };
   const scopedItemModel = {};
-  const scopedTaxRateModel = {};
   const repository = Object.create(CustomerEstimateRepository.prototype);
   repository.model = model;
   repository.customerEstimateItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
-  repository.taxRateModel = { schema: jest.fn().mockReturnValue(scopedTaxRateModel) };
   if (withBooking) {
     const scopedBookingModel = {};
     repository.bookingModel = { schema: jest.fn().mockReturnValue(scopedBookingModel) };
-    return { repository, scopedModel, scopedItemModel, scopedTaxRateModel, scopedBookingModel };
+    return { repository, scopedModel, scopedItemModel, scopedBookingModel };
   }
-  return { repository, scopedModel, scopedItemModel, scopedTaxRateModel };
+  return { repository, scopedModel, scopedItemModel };
 }
 
-const itemIncludes = (scopedTaxRateModel) => [
-  { model: scopedTaxRateModel, as: 'Tax1Rate', attributes: ['name', 'rate'] },
-  { model: scopedTaxRateModel, as: 'Tax2Rate', attributes: ['name', 'rate'] },
-];
-
 describe('CustomerEstimateRepository.listByCustomerId', () => {
-  it('queries estimates scoped to the customerId with pagination, including items (with both tax rate slots) for totals', async () => {
-    const { repository, scopedModel, scopedItemModel, scopedTaxRateModel } = buildRepository();
+  it('queries estimates scoped to the customerId with pagination, including items for totals', async () => {
+    const { repository, scopedModel, scopedItemModel } = buildRepository();
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0 }),
@@ -39,7 +32,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
       offset: 0,
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['updatedAt'] },
-      include: [{ model: scopedItemModel, as: 'items', include: itemIncludes(scopedTaxRateModel) }],
+      include: [{ model: scopedItemModel, as: 'items' }],
     });
   });
 
@@ -56,7 +49,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
   });
 
   it('joins Booking and filters by addressId when addressId is provided, alongside the items include', async () => {
-    const { repository, scopedModel, scopedItemModel, scopedTaxRateModel, scopedBookingModel } = buildRepository({
+    const { repository, scopedModel, scopedItemModel, scopedBookingModel } = buildRepository({
       withBooking: true,
     });
 
@@ -67,7 +60,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
     expect(scopedModel.findAndCountAll).toHaveBeenCalledWith(
       expect.objectContaining({
         include: [
-          { model: scopedItemModel, as: 'items', include: itemIncludes(scopedTaxRateModel) },
+          { model: scopedItemModel, as: 'items' },
           { model: scopedBookingModel, attributes: [], where: { addressId: 'addr1' }, required: true },
         ],
       }),
