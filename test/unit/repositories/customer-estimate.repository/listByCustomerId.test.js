@@ -33,6 +33,7 @@ describe('CustomerEstimateRepository.listByCustomerId', () => {
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['updatedAt'] },
       include: [{ model: scopedItemModel, as: 'items' }],
+      distinct: true,
     });
   });
 

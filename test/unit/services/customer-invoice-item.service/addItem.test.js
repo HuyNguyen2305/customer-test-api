@@ -87,8 +87,9 @@ describe('CustomerInvoiceItemService.addItem', () => {
       transaction: FAKE_TRANSACTION,
     });
     const [patches] = service.customerInvoiceItemRepository.updateMany.mock.calls[0];
-    // subtotal 80, discount 20 -> ratio 0.25 -> sibling's taxable base 30*0.75=22.5, tax 5% = 1.125
-    expect(patches.find((p) => p.id === 'ii1').taxSlots.tax1Total).toBe(1.125);
+    // subtotal 80, discount 20 -> ratio 0.25 -> sibling's taxable base 30*0.75=22.5, tax 5% = 1.125,
+    // rounded to 2 decimals (matching what Postgres's DECIMAL(12,2) column persists) -> 1.13
+    expect(patches.find((p) => p.id === 'ii1').taxSlots.tax1Total).toBe(1.13);
   });
 
   it('throws NotFoundError when the referenced item does not exist', async () => {

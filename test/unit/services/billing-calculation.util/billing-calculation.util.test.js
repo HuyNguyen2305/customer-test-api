@@ -20,6 +20,14 @@ describe('computeDiscountRatio', () => {
   it('computes a percent discount directly as the ratio', () => {
     expect(computeDiscountRatio(200, 'percent', 10)).toBe(0.1);
   });
+
+  it('clamps to 1 when a flat discount is larger than the subtotal', () => {
+    expect(computeDiscountRatio(50, 'flat', 200)).toBe(1);
+  });
+
+  it('clamps to 1 when a percent discount is over 100', () => {
+    expect(computeDiscountRatio(100, 'percent', 150)).toBe(1);
+  });
 });
 
 describe('computeItemAmounts', () => {
@@ -54,6 +62,29 @@ describe('computeItemAmounts', () => {
     expect(result.tax2Total).toBeNull();
     expect(result.total).toBe(50);
   });
+
+  it('never goes negative when the discount ratio is clamped at 1 (discount >= subtotal)', () => {
+    const item = { cost: 50, qty: 1, tax1Rate: 8 };
+
+    const result = computeItemAmounts(item, 1);
+
+    expect(result.tax1Total).toBe(0);
+    expect(result.total).toBe(50);
+  });
+
+  it('rounds subtotal/tax1Total/tax2Total to 2 decimals, and total never drifts from their sum', () => {
+    // Unrounded this would be tax1Total: 2.4747525, tax2Total: 1.8748125 - the
+    // exact drift reproduced against the live DB (Postgres rounds DECIMAL(12,2)
+    // on write, so an unrounded in-memory value never matches what's persisted).
+    const item = { cost: 33.33, qty: 1, tax1Rate: 8.25, tax2Rate: 6.25 };
+
+    const result = computeItemAmounts(item, 0.1);
+
+    expect(result.subtotal).toBe(33.33);
+    expect(result.tax1Total).toBe(2.47);
+    expect(result.tax2Total).toBe(1.87);
+    expect(result.total).toBe(result.subtotal + result.tax1Total + result.tax2Total);
+  });
 });
 
 describe('recomputeItems', () => {
@@ -72,6 +103,15 @@ describe('recomputeItems', () => {
 
   it('returns an empty array for no items', () => {
     expect(recomputeItems(undefined, { discountType: 'flat', discountValue: 0 })).toEqual([]);
+  });
+
+  it('never produces negative tax or total when the combined discount exceeds the subtotal', () => {
+    const items = [{ id: 'i1', cost: 50, qty: 1, tax1Rate: 8 }];
+
+    const patches = recomputeItems(items, { discountType: 'flat', discountValue: 200 });
+
+    expect(patches[0].tax1Total).toBe(0);
+    expect(patches[0].total).toBe(50);
   });
 });
 
@@ -154,6 +194,18 @@ describe('computeEntityTotals', () => {
     });
 
     expect(result.subtotal).toBe(80);
+  });
+
+  it('clamps discountAmount/taxableAmount/total at 0 instead of going negative when the flat discount exceeds the subtotal', () => {
+    const result = computeEntityTotals({
+      items: [{ subtotal: 50, tax1RateId: null, tax2RateId: null }],
+      discountType: 'flat',
+      discountValue: 200,
+    });
+
+    expect(result.discountAmount).toBe(50);
+    expect(result.taxableAmount).toBe(0);
+    expect(result.total).toBe(0);
   });
 });
 

@@ -31,10 +31,20 @@ export function nestTaxSlotsPatch({ id, subtotal, total, ...taxSlots }) {
   return { id, subtotal, total, taxSlots };
 }
 
+// Round-trips through Postgres as a DECIMAL(12,2) column regardless, so
+// computing here with more than 2 decimal digits would only let the
+// in-memory response (built from these values, not a re-fetch) drift from
+// what actually gets persisted.
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// Clamped to [0, 1]: a discount worth as much as or more than the subtotal
+// it's applied to still can't tax (or total) an item into negative dollars.
 export function computeDiscountRatio(subtotal, discountType, discountValue) {
   if (subtotal <= 0) return 0;
   const discountAmount = discountType === 'flat' ? Number(discountValue) : subtotal * (Number(discountValue) / 100);
-  return discountAmount / subtotal;
+  return Math.min(discountAmount / subtotal, 1);
 }
 
 // Pure per-item math: reads cost/qty and whichever tax1Rate/tax2Rate percentages
@@ -44,11 +54,11 @@ export function computeDiscountRatio(subtotal, discountType, discountValue) {
 // tax1RateId/tax1Name/tax1Rate echoed straight through, tax1Total/subtotal/
 // total freshly computed.
 export function computeItemAmounts(item, discountRatio) {
-  const subtotal = Number(item.cost) * item.qty;
+  const subtotal = round2(Number(item.cost) * item.qty);
   const taxableBase = subtotal * (1 - discountRatio);
 
-  const tax1Total = item.tax1Rate != null ? taxableBase * (Number(item.tax1Rate) / 100) : null;
-  const tax2Total = item.tax2Rate != null ? taxableBase * (Number(item.tax2Rate) / 100) : null;
+  const tax1Total = item.tax1Rate != null ? round2(taxableBase * (Number(item.tax1Rate) / 100)) : null;
+  const tax2Total = item.tax2Rate != null ? round2(taxableBase * (Number(item.tax2Rate) / 100)) : null;
 
   return {
     subtotal,
@@ -110,7 +120,7 @@ export function computeEntityTotals({ items, discountType, discountValue }) {
   const list = items ?? [];
 
   const subtotal = list.reduce((sum, item) => sum + Number(item.subtotal ?? Number(item.cost) * item.qty), 0);
-  const discountAmount = discountType === 'flat' ? Number(discountValue) : subtotal * (Number(discountValue) / 100);
+  const discountAmount = subtotal * computeDiscountRatio(subtotal, discountType, discountValue);
   const taxableAmount = subtotal - discountAmount;
 
   const taxes = collectTaxRows(list);

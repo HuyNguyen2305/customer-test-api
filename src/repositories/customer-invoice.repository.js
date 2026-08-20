@@ -49,6 +49,10 @@ class CustomerInvoiceRepository extends BaseRepository {
       // from the addressSnapshot JSONB column already on this row, never from
       // the associated Address.
       include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
+      // Without this, the join to 'items' makes count() tally one row per
+      // item instead of per invoice, inflating pagination totals for any
+      // invoice with more than one line item.
+      distinct: true,
     });
   }
 

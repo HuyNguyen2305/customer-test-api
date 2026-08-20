@@ -26,6 +26,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
       // No 'address' join - toInvoiceData reads the addressSnapshot JSONB
       // column already on the row instead.
       include: [{ model: scopedItemModel, as: 'items' }],
+      distinct: true,
     });
     expect(result).toEqual({ rows: [{ id: 'i1' }], count: 1 });
   });

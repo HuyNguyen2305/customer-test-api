@@ -10,9 +10,7 @@ class CustomerEstimateItemRepository extends BaseRepository {
   // runs on every read (compute-and-cache) rather than after a client write.
   async updateMany(patches, options = {}) {
     const scoped = this.setSchema();
-    for (const { id, ...data } of patches) {
-      await scoped.update(data, { where: { id }, ...options });
-    }
+    await Promise.all(patches.map(({ id, ...data }) => scoped.update(data, { where: { id }, ...options })));
   }
 }
 

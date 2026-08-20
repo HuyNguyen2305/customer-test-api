@@ -30,10 +30,12 @@ describe('EstimatePdfService.getEstimatePdf', () => {
     buildEstimatePdfMock.mockResolvedValue(buffer);
     const service = Object.create(EstimatePdfService.prototype);
     service.customerEstimateRepository = { findByIdForPdf: jest.fn().mockResolvedValue(baseEstimate) };
+    service.customerEstimateService = { refreshItemCache: jest.fn().mockResolvedValue(baseEstimate) };
 
     const result = await service.getEstimatePdf('e1', 'c1');
 
     expect(service.customerEstimateRepository.findByIdForPdf).toHaveBeenCalledWith('e1', 'c1');
+    expect(service.customerEstimateService.refreshItemCache).toHaveBeenCalledWith(baseEstimate);
     expect(buildEstimatePdfMock).toHaveBeenCalledTimes(1);
     const [estimateData, options] = buildEstimatePdfMock.mock.calls[0];
     expect(estimateData.id).toBe('e1');
@@ -45,8 +47,10 @@ describe('EstimatePdfService.getEstimatePdf', () => {
   it('throws NotFoundError when the estimate belongs to another customer', async () => {
     const service = Object.create(EstimatePdfService.prototype);
     service.customerEstimateRepository = { findByIdForPdf: jest.fn().mockResolvedValue(null) };
+    service.customerEstimateService = { refreshItemCache: jest.fn() };
 
     await expect(service.getEstimatePdf('e1', 'someone-else')).rejects.toThrow(NotFoundError);
+    expect(service.customerEstimateService.refreshItemCache).not.toHaveBeenCalled();
     expect(buildEstimatePdfMock).not.toHaveBeenCalled();
   });
 
@@ -55,8 +59,10 @@ describe('EstimatePdfService.getEstimatePdf', () => {
     service.customerEstimateRepository = {
       findByIdForPdf: jest.fn().mockResolvedValue({ ...baseEstimate, status }),
     };
+    service.customerEstimateService = { refreshItemCache: jest.fn() };
 
     await expect(service.getEstimatePdf('e1', 'c1')).rejects.toThrow(NotFoundError);
+    expect(service.customerEstimateService.refreshItemCache).not.toHaveBeenCalled();
     expect(buildEstimatePdfMock).not.toHaveBeenCalled();
   });
 });

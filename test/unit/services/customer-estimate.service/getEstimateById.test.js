@@ -50,11 +50,13 @@ describe('CustomerEstimateService.getEstimateById', () => {
       ...baseEstimate,
       statusLabel: 'Open',
       subtotal: 0,
-      discountAmount: 5,
-      taxableAmount: -5,
+      // A $5 flat discount against a $0 subtotal (no items) is clamped to a
+      // 0 ratio rather than producing a negative discountAmount/total.
+      discountAmount: 0,
+      taxableAmount: 0,
       taxes: [],
       taxTotal: 0,
-      total: -5,
+      total: 0,
     });
     expect(result.items).toBeUndefined();
   });

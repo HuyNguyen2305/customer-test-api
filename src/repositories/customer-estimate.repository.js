@@ -35,6 +35,10 @@ class CustomerEstimateRepository extends BaseRepository {
           ? [{ model: this.scopeModel(this.bookingModel), attributes: [], where: { addressId }, required: true }]
           : []),
       ],
+      // Without this, the joined 'items' (and, when filtering by addressId,
+      // the joined Booking) make count() tally more than one row per
+      // estimate, inflating pagination totals for any multi-item estimate.
+      distinct: true,
     });
   }
 

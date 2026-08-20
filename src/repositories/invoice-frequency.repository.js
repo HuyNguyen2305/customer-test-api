@@ -15,7 +15,7 @@ class InvoiceFrequencyRepository extends BaseRepository {
   findAllActiveRecurring() {
     return this.findAll({
       where: { 'recurrenceRule.repeatType': { [Op.ne]: 'does_not_repeat' } },
-      include: [{ model: this.serviceInvoiceModel }],
+      include: [{ model: this.scopeModel(this.serviceInvoiceModel) }],
     });
   }
 }
