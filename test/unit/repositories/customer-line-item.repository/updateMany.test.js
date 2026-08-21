@@ -1,13 +1,13 @@
 import { jest } from '@jest/globals';
 
-const { default: CustomerEstimateItemRepository } = await import('#repositories/customer-estimate-item.repository.js');
+const { default: CustomerLineItemRepository } = await import('#repositories/customer-line-item.repository.js');
 const { requestContext } = await import('#common/request-context.js');
 
-describe('CustomerEstimateItemRepository.updateMany', () => {
+describe('CustomerLineItemRepository.updateMany', () => {
   it('issues one update per patch, concurrently, scoped by id', async () => {
     const scopedModel = { update: jest.fn().mockResolvedValue([1]) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
-    const repository = Object.create(CustomerEstimateItemRepository.prototype);
+    const repository = Object.create(CustomerLineItemRepository.prototype);
     repository.model = model;
 
     const transaction = { fakeTransaction: true };
@@ -31,7 +31,7 @@ describe('CustomerEstimateItemRepository.updateMany', () => {
       update: jest.fn(() => new Promise((resolve) => resolvers.push(resolve))),
     };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
-    const repository = Object.create(CustomerEstimateItemRepository.prototype);
+    const repository = Object.create(CustomerLineItemRepository.prototype);
     repository.model = model;
 
     const patches = [{ id: 'i1' }, { id: 'i2' }, { id: 'i3' }];

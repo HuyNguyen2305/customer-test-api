@@ -129,7 +129,8 @@ const invoicePaidA = {
 
 const invoiceItemA = {
   id: '11111111-2222-3333-4444-888888888888',
-  customerInvoiceId: invoiceA.id,
+  parentId: invoiceA.id,
+  parentType: 'invoice',
   itemId: item1.id,
   description: 'Treatment service',
   cost: 100,
@@ -166,7 +167,8 @@ const estimateApprovedA2 = {
 
 const estimateItemA = {
   id: '22222222-3333-4444-5555-777777777777',
-  customerEstimateId: estimateA.id,
+  parentId: estimateA.id,
+  parentType: 'estimate',
   itemId: item1.id,
   description: 'Quoted treatment',
   cost: 80,

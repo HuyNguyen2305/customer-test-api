@@ -10,17 +10,17 @@ describe('CustomerEstimateRepository.findByIdForCustomer', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
     const scopedItemDefModel = {};
-    const customerEstimateItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
+    const customerLineItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerEstimateRepository.prototype);
     repository.model = model;
-    repository.customerEstimateItemModel = customerEstimateItemModel;
+    repository.customerLineItemModel = customerLineItemModel;
     repository.itemModel = { schema: jest.fn().mockReturnValue(scopedItemDefModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('e1', 'c1'),
     );
 
-    expect(customerEstimateItemModel.schema).toHaveBeenCalledWith('tenant_x');
+    expect(customerLineItemModel.schema).toHaveBeenCalledWith('tenant_x');
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'e1', customerId: 'c1' },
       attributes: { exclude: ['updatedAt'] },

@@ -56,9 +56,8 @@ const allFixtures = {
   Item: [item1],
   Booking: [bookingA, bookingB, bookingA2, bookingA3Pending],
   CustomerInvoice: [invoiceA, invoiceB, invoiceA2],
-  CustomerInvoiceItem: [invoiceItemA],
   CustomerEstimate: [estimateA, estimateB, estimateDraftA, estimateApprovedA2],
-  CustomerEstimateItem: [estimateItemA],
+  CustomerLineItem: [invoiceItemA, estimateItemA],
   CustomerPaymentMethod: [paymentMethodA],
   CustomerLedgerEntry: [ledgerChargeA, ledgerPaymentA, ledgerChargeA2, ledgerPaymentA2],
   ServiceDocumentLibrary: [serviceDocLibraryA],
@@ -350,6 +349,13 @@ describe('Customer portal GET endpoints (integration)', () => {
       const body = response.json();
       expect(Number(body.data.cost)).toBe(item1.defaultCost);
 
+      // customer_line_items has no FK on parentId (approved polymorphic
+      // exception, see root CLAUDE.md), so deleting invoiceA2 on teardown
+      // won't cascade-clean this row the way the old customerInvoiceId FK
+      // did - clean it up explicitly so the later teardown of item1 (which
+      // still has a real itemId FK) doesn't fail with a FK violation.
+      await models.CustomerLineItem.schema(TEST_SCHEMA).destroy({ where: { id: body.data.id } });
+
       await app.close();
     });
   });
@@ -380,6 +386,10 @@ describe('Customer portal GET endpoints (integration)', () => {
       const body = response.json();
       expect(body.data.qty).toBe(5);
       expect(Number(body.data.cost)).toBe(item1.defaultCost);
+
+      // See the cleanup comment in the previous test - no FK on parentId
+      // means this row needs explicit teardown before item1 is destroyed.
+      await models.CustomerLineItem.schema(TEST_SCHEMA).destroy({ where: { id: itemId } });
 
       await app.close();
     });
@@ -697,7 +707,8 @@ describe('Customer portal GET endpoints (integration)', () => {
     };
     const taxedItem1 = {
       id: 'aaaaaaaa-1111-2222-3333-777777777777',
-      customerEstimateId: taxedEstimate.id,
+      parentId: taxedEstimate.id,
+      parentType: 'estimate',
       itemId: item1.id,
       description: 'NY item',
       cost: 100,
@@ -706,7 +717,8 @@ describe('Customer portal GET endpoints (integration)', () => {
     };
     const taxedItem2 = {
       id: 'aaaaaaaa-1111-2222-3333-888888888888',
-      customerEstimateId: taxedEstimate.id,
+      parentId: taxedEstimate.id,
+      parentType: 'estimate',
       itemId: item1.id,
       description: 'TX item',
       cost: 100,
@@ -714,14 +726,14 @@ describe('Customer portal GET endpoints (integration)', () => {
       taxSlots: { tax1RateId: taxRateTX.id },
     };
 
-    // TaxRate must be created before CustomerEstimateItem (which references it
+    // TaxRate must be created before CustomerLineItem (which references it
     // via tax1RateId), so it's spread in first - seedWithTransaction creates
     // rows in Object.entries() order and tears them down in reverse.
     const seed = {
       TaxRate: [taxRateNY, taxRateTX],
       ...allFixtures,
       CustomerEstimate: [...allFixtures.CustomerEstimate, taxedEstimate],
-      CustomerEstimateItem: [...allFixtures.CustomerEstimateItem, taxedItem1, taxedItem2],
+      CustomerLineItem: [...allFixtures.CustomerLineItem, taxedItem1, taxedItem2],
     };
 
     await seedWithTransaction(seed, async () => {
@@ -740,8 +752,8 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(firstBody.data.total).toBeCloseTo(210.25, 2);
       expect(firstBody.data.taxes).toHaveLength(2);
 
-      const itemsAfterFirst = await models.CustomerEstimateItem.schema(TEST_SCHEMA).findAll({
-        where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
+      const itemsAfterFirst = await models.CustomerLineItem.schema(TEST_SCHEMA).findAll({
+        where: { parentId: taxedEstimate.id, parentType: 'estimate', id: [taxedItem1.id, taxedItem2.id] },
       });
       expect(itemsAfterFirst.map((row) => Number(row.taxSlots.tax1Total)).sort()).toEqual([4, 6.25]);
       expect(itemsAfterFirst.every((row) => row.taxSlots.tax1Name)).toBe(true);
@@ -755,8 +767,8 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(second.statusCode).toBe(200);
       expect(second.json().data.total).toBeCloseTo(210.25, 2);
 
-      const itemsAfterSecond = await models.CustomerEstimateItem.schema(TEST_SCHEMA).findAll({
-        where: { customerEstimateId: taxedEstimate.id, id: [taxedItem1.id, taxedItem2.id] },
+      const itemsAfterSecond = await models.CustomerLineItem.schema(TEST_SCHEMA).findAll({
+        where: { parentId: taxedEstimate.id, parentType: 'estimate', id: [taxedItem1.id, taxedItem2.id] },
       });
       // Re-read must not change or duplicate anything - same 2 items, same amounts.
       expect(itemsAfterSecond.map((row) => Number(row.taxSlots.tax1Total)).sort()).toEqual([4, 6.25]);
@@ -781,7 +793,8 @@ describe('Customer portal GET endpoints (integration)', () => {
     // so without this the item would be treated as having no tax at all.
     const taxedInvoiceItem = {
       id: 'bbbbbbbb-1111-2222-3333-666666666666',
-      customerInvoiceId: cascadeInvoice.id,
+      parentId: cascadeInvoice.id,
+      parentType: 'invoice',
       itemId: item1.id,
       description: 'Taxed item',
       cost: 80,
@@ -793,7 +806,7 @@ describe('Customer portal GET endpoints (integration)', () => {
       TaxRate: [taxRate],
       ...allFixtures,
       CustomerInvoice: [...allFixtures.CustomerInvoice, cascadeInvoice],
-      CustomerInvoiceItem: [...allFixtures.CustomerInvoiceItem, taxedInvoiceItem],
+      CustomerLineItem: [...allFixtures.CustomerLineItem, taxedInvoiceItem],
     };
 
     await seedWithTransaction(seed, async () => {
@@ -808,8 +821,8 @@ describe('Customer portal GET endpoints (integration)', () => {
       });
       expect(addResponse.statusCode).toBe(200);
 
-      const items = await models.CustomerInvoiceItem.schema(TEST_SCHEMA).findAll({
-        where: { customerInvoiceId: cascadeInvoice.id },
+      const items = await models.CustomerLineItem.schema(TEST_SCHEMA).findAll({
+        where: { parentId: cascadeInvoice.id, parentType: 'invoice' },
       });
       const taxedRow = items.find((row) => row.id === taxedInvoiceItem.id);
       const untaxedRow = items.find((row) => row.id !== taxedInvoiceItem.id);
@@ -823,6 +836,10 @@ describe('Customer portal GET endpoints (integration)', () => {
       // The field is DECIMAL(12,2) inside the JSONB, so Postgres rounds to cents on write.
       expect(Number(taxedRow.taxSlots.tax1Total)).toBeCloseTo(expectedTax1Total, 2);
       expect(untaxedRow.taxSlots.tax1RateId).toBeNull();
+
+      // See the cleanup comment on the "ignores a client-supplied cost" test
+      // above - no FK on parentId means this row needs explicit teardown.
+      await models.CustomerLineItem.schema(TEST_SCHEMA).destroy({ where: { id: untaxedRow.id } });
 
       await app.close();
     });
@@ -878,6 +895,13 @@ describe('Customer portal GET endpoints (integration)', () => {
       expect(invoiceResponse.statusCode).toBe(200);
       expect(invoiceResponse.json().data.id).toBe(body.data.id);
 
+      // See the cleanup comment on the "ignores a client-supplied cost" test
+      // above - no FK on parentId means copyEstimateLineItems's new invoice
+      // line item needs explicit teardown before item1 is destroyed.
+      await models.CustomerLineItem.schema(TEST_SCHEMA).destroy({
+        where: { parentId: body.data.id, parentType: 'invoice' },
+      });
+
       await app.close();
     });
   });
@@ -918,6 +942,13 @@ describe('Customer portal GET endpoints (integration)', () => {
       });
 
       expect(second.statusCode).toBe(409);
+
+      // See the cleanup comment on the "ignores a client-supplied cost" test
+      // above - no FK on parentId means copyEstimateLineItems's new invoice
+      // line item needs explicit teardown before item1 is destroyed.
+      await models.CustomerLineItem.schema(TEST_SCHEMA).destroy({
+        where: { parentId: first.json().data.id, parentType: 'invoice' },
+      });
 
       await app.close();
     });

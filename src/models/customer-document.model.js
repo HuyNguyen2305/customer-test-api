@@ -9,7 +9,11 @@ export default (sequelize, DataTypes) => {
       },
       customerId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
+      },
+      serviceId: {
+        type: DataTypes.UUID,
+        allowNull: true,
       },
       bookingId: {
         type: DataTypes.UUID,

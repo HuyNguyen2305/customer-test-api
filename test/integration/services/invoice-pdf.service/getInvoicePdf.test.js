@@ -26,7 +26,7 @@ const {
 function buildService() {
   const customerInvoiceRepository = Object.create(CustomerInvoiceRepository.prototype);
   customerInvoiceRepository.model = models.CustomerInvoice;
-  customerInvoiceRepository.customerInvoiceItemModel = models.CustomerInvoiceItem;
+  customerInvoiceRepository.customerLineItemModel = models.CustomerLineItem;
   customerInvoiceRepository.addressModel = models.Address;
   customerInvoiceRepository.customerModel = models.Customer;
   const service = Object.create(InvoicePdfService.prototype);
@@ -41,7 +41,7 @@ const baseFixtures = {
   Item: [item1],
   Booking: [bookingA, bookingA2, bookingB],
   CustomerInvoice: [invoiceA, invoiceB, invoiceA2, invoicePaidA],
-  CustomerInvoiceItem: [invoiceItemA],
+  CustomerLineItem: [invoiceItemA],
 };
 
 describe('InvoicePdfService.getInvoicePdf (integration)', () => {

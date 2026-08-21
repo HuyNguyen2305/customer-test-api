@@ -1,14 +1,18 @@
 export default (sequelize, DataTypes) => {
   sequelize.define(
-    'CustomerEstimateItem',
+    'CustomerLineItem',
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      customerEstimateId: {
+      parentId: {
         type: DataTypes.UUID,
+        allowNull: false,
+      },
+      parentType: {
+        type: DataTypes.STRING(20),
         allowNull: false,
       },
       itemId: {
@@ -48,7 +52,7 @@ export default (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'customer_estimate_items',
+      tableName: 'customer_line_items',
     },
   );
 };

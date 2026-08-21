@@ -11,11 +11,6 @@ function buildService({
 } = {}) {
   const service = Object.create(JobSyncService.prototype);
   service.bookingRepository = { findActiveBookings: jest.fn().mockResolvedValue(bookings) };
-  service.jobMaterialRepository = {
-    findByBookingId: jest.fn((id) => Promise.resolve(jobMaterialsByBooking[id] || [])),
-    deleteByBookingId: jest.fn().mockResolvedValue(undefined),
-    bulkCreate: jest.fn().mockResolvedValue(undefined),
-  };
   service.todoListRepository = {
     findByBookingId: jest.fn((id) => Promise.resolve(jobTodoListsByBooking[id] || [])),
     deleteByBookingId: jest.fn().mockResolvedValue(undefined),
@@ -23,7 +18,12 @@ function buildService({
     findByServiceId: jest.fn((id) => Promise.resolve(todoListsByService[id] || [])),
   };
   service.todoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
-  service.materialRepository = { findByServiceId: jest.fn((id) => Promise.resolve(materialsByService[id] || [])) };
+  service.materialRepository = {
+    findByServiceId: jest.fn((id) => Promise.resolve(materialsByService[id] || [])),
+    findByBookingId: jest.fn((id) => Promise.resolve(jobMaterialsByBooking[id] || [])),
+    deleteByBookingId: jest.fn().mockResolvedValue(undefined),
+    bulkCreate: jest.fn().mockResolvedValue(undefined),
+  };
   return service;
 }
 
@@ -46,8 +46,8 @@ describe('JobSyncService.syncActiveJobs', () => {
 
     const result = await service.syncActiveJobs();
 
-    expect(service.jobMaterialRepository.deleteByBookingId).toHaveBeenCalledWith('b1');
-    expect(service.jobMaterialRepository.bulkCreate).toHaveBeenCalled();
+    expect(service.materialRepository.deleteByBookingId).toHaveBeenCalledWith('b1');
+    expect(service.materialRepository.bulkCreate).toHaveBeenCalled();
     expect(result.updated).toContain('b1');
     expect(result.skipped).not.toContain('b1');
   });
@@ -63,8 +63,8 @@ describe('JobSyncService.syncActiveJobs', () => {
 
     const result = await service.syncActiveJobs();
 
-    expect(service.jobMaterialRepository.deleteByBookingId).not.toHaveBeenCalled();
-    expect(service.jobMaterialRepository.bulkCreate).not.toHaveBeenCalled();
+    expect(service.materialRepository.deleteByBookingId).not.toHaveBeenCalled();
+    expect(service.materialRepository.bulkCreate).not.toHaveBeenCalled();
     expect(result.skipped).toContain('b1');
     expect(result.updated).not.toContain('b1');
   });

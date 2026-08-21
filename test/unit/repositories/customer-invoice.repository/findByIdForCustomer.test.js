@@ -9,16 +9,16 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const scopedModel = { findOne: jest.fn().mockResolvedValue(invoice) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const scopedItemModel = {};
-    const customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
+    const customerLineItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = customerInvoiceItemModel;
+    repository.customerLineItemModel = customerLineItemModel;
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'c1'),
     );
 
-    expect(customerInvoiceItemModel.schema).toHaveBeenCalledWith('tenant_x');
+    expect(customerLineItemModel.schema).toHaveBeenCalledWith('tenant_x');
     expect(scopedModel.findOne).toHaveBeenCalledWith({
       where: { id: 'i1', customerId: 'c1' },
       attributes: { exclude: ['updatedAt'] },
@@ -32,7 +32,7 @@ describe('CustomerInvoiceRepository.findByIdForCustomer', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue({}) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.findByIdForCustomer('i1', 'someone-else'),

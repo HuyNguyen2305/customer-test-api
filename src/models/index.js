@@ -16,24 +16,20 @@ import defineServiceEstimateItem from './service-estimate-item.model.js';
 import defineMaterialsMaster from './materials-master.model.js';
 import defineUnitType from './unit-type.model.js';
 import defineApplicationMethod from './application-method.model.js';
-import defineCustomMaterial from './custom-material.model.js';
 import defineLocation from './location.model.js';
 import definePest from './pest.model.js';
 import defineMaterial from './material.model.js';
 import defineServiceDocumentLibrary from './service-document-library.model.js';
 import definePdf from './pdf.model.js';
-import defineServiceDocument from './service-document.model.js';
 import defineTodoList from './todo-list.model.js';
 import defineTodo from './todo.model.js';
 import defineCustomer from './customer.model.js';
 import defineRevokedToken from './revoked-token.model.js';
 import defineBooking from './booking.model.js';
-import defineJobMaterial from './job-material.model.js';
 import defineAddress from './address.model.js';
 import defineCustomerInvoice from './customer-invoice.model.js';
-import defineCustomerInvoiceItem from './customer-invoice-item.model.js';
 import defineCustomerEstimate from './customer-estimate.model.js';
-import defineCustomerEstimateItem from './customer-estimate-item.model.js';
+import defineCustomerLineItem from './customer-line-item.model.js';
 import defineCustomerDocument from './customer-document.model.js';
 import defineCustomerLedgerEntry from './customer-ledger-entry.model.js';
 import defineCustomerPaymentMethod from './customer-payment-method.model.js';
@@ -54,24 +50,20 @@ for (const define of [
   defineMaterialsMaster,
   defineUnitType,
   defineApplicationMethod,
-  defineCustomMaterial,
   defineLocation,
   definePest,
   defineMaterial,
   defineServiceDocumentLibrary,
   definePdf,
-  defineServiceDocument,
   defineTodoList,
   defineTodo,
   defineCustomer,
   defineRevokedToken,
   defineBooking,
-  defineJobMaterial,
   defineAddress,
   defineCustomerInvoice,
-  defineCustomerInvoiceItem,
   defineCustomerEstimate,
-  defineCustomerEstimateItem,
+  defineCustomerLineItem,
   defineCustomerDocument,
   defineCustomerLedgerEntry,
   defineCustomerPaymentMethod,
@@ -94,23 +86,19 @@ const {
   MaterialsMaster,
   UnitType,
   ApplicationMethod,
-  CustomMaterial,
   Location,
   Pest,
   Material,
   ServiceDocumentLibrary,
   Pdf,
-  ServiceDocument,
   TodoList,
   Todo,
   Customer,
   Booking,
-  JobMaterial,
   Address,
   CustomerInvoice,
-  CustomerInvoiceItem,
   CustomerEstimate,
-  CustomerEstimateItem,
+  CustomerLineItem,
   CustomerDocument,
   CustomerLedgerEntry,
   CustomerPaymentMethod,
@@ -147,14 +135,8 @@ Material.belongsTo(Service, { foreignKey: 'serviceId' });
 Material.belongsTo(MaterialsMaster, { foreignKey: 'materialId' });
 Material.belongsTo(UnitType, { foreignKey: 'unitsTypeId' });
 Material.belongsTo(ApplicationMethod, { foreignKey: 'methodId' });
-Material.belongsTo(CustomMaterial, { foreignKey: 'customMaterialId' });
 Material.belongsTo(Location, { foreignKey: 'locationId' });
 Material.belongsTo(Pest, { foreignKey: 'targetPestId' });
-
-Service.hasMany(ServiceDocument, { foreignKey: 'serviceId' });
-ServiceDocument.belongsTo(Service, { foreignKey: 'serviceId' });
-ServiceDocument.belongsTo(ServiceDocumentLibrary, { foreignKey: 'documentId' });
-ServiceDocument.belongsTo(Pdf, { foreignKey: 'pdfId' });
 
 // TodoList doubles as both a reusable checklist template (serviceId set) and a
 // per-booking snapshot copy of one (bookingId set) - exactly one is non-null,
@@ -169,14 +151,11 @@ Booking.belongsTo(Service, { foreignKey: 'serviceId' });
 Customer.hasMany(Booking, { foreignKey: 'customerId' });
 Booking.belongsTo(Customer, { foreignKey: 'customerId' });
 
-Booking.hasMany(JobMaterial, { foreignKey: 'bookingId' });
-JobMaterial.belongsTo(Booking, { foreignKey: 'bookingId' });
-JobMaterial.belongsTo(MaterialsMaster, { foreignKey: 'materialId' });
-JobMaterial.belongsTo(UnitType, { foreignKey: 'unitsTypeId' });
-JobMaterial.belongsTo(ApplicationMethod, { foreignKey: 'methodId' });
-JobMaterial.belongsTo(CustomMaterial, { foreignKey: 'customMaterialId' });
-JobMaterial.belongsTo(Location, { foreignKey: 'locationId' });
-JobMaterial.belongsTo(Pest, { foreignKey: 'targetPestId' });
+// Material doubles as both a reusable per-service template (serviceId set)
+// and a per-booking snapshot copy of one (bookingId set) - exactly one is
+// non-null, enforced by a DB CHECK constraint (see the table-merge migration).
+Booking.hasMany(Material, { foreignKey: 'bookingId' });
+Material.belongsTo(Booking, { foreignKey: 'bookingId' });
 
 Booking.hasMany(TodoList, { foreignKey: 'bookingId' });
 TodoList.belongsTo(Booking, { foreignKey: 'bookingId' });
@@ -191,9 +170,18 @@ CustomerInvoice.belongsTo(Customer, { foreignKey: 'customerId' });
 CustomerInvoice.belongsTo(ServiceInvoice, { foreignKey: 'sourceInvoiceId' });
 Customer.hasMany(CustomerInvoice, { foreignKey: 'customerId' });
 
-CustomerInvoice.hasMany(CustomerInvoiceItem, { foreignKey: 'customerInvoiceId', as: 'items' });
-CustomerInvoiceItem.belongsTo(CustomerInvoice, { foreignKey: 'customerInvoiceId' });
-CustomerInvoiceItem.belongsTo(Item, { foreignKey: 'itemId' });
+// customer_line_items is a deliberate polymorphic exception to one-model-per-
+// table (see root CLAUDE.md) - parentId has no DB-level FK, so these
+// associations use constraints: false and a scope on parentType to keep each
+// side (estimate vs invoice) filtered automatically on every include/create.
+CustomerInvoice.hasMany(CustomerLineItem, {
+  foreignKey: 'parentId',
+  constraints: false,
+  scope: { parentType: 'invoice' },
+  as: 'items',
+});
+CustomerLineItem.belongsTo(CustomerInvoice, { foreignKey: 'parentId', constraints: false, as: 'invoice' });
+CustomerLineItem.belongsTo(Item, { foreignKey: 'itemId' });
 
 CustomerInvoice.belongsTo(Address, { foreignKey: 'addressId', as: 'address' });
 Address.hasMany(CustomerInvoice, { foreignKey: 'addressId' });
@@ -206,12 +194,23 @@ CustomerEstimate.hasOne(CustomerInvoice, { foreignKey: 'estimateId' });
 CustomerInvoice.belongsTo(CustomerEstimate, { foreignKey: 'estimateId' });
 Customer.hasMany(CustomerEstimate, { foreignKey: 'customerId' });
 
-CustomerEstimate.hasMany(CustomerEstimateItem, { foreignKey: 'customerEstimateId', as: 'items' });
-CustomerEstimateItem.belongsTo(CustomerEstimate, { foreignKey: 'customerEstimateId' });
-CustomerEstimateItem.belongsTo(Item, { foreignKey: 'itemId' });
+CustomerEstimate.hasMany(CustomerLineItem, {
+  foreignKey: 'parentId',
+  constraints: false,
+  scope: { parentType: 'estimate' },
+  as: 'items',
+});
+CustomerLineItem.belongsTo(CustomerEstimate, { foreignKey: 'parentId', constraints: false, as: 'estimate' });
 
+// CustomerDocument doubles as both a per-customer document instance
+// (customerId set) and a per-service template row (serviceId set) - exactly
+// one is non-null, enforced by a DB CHECK constraint (see the table-merge
+// migration). bookingId is an optional detail, only meaningful on
+// customerId-owned rows.
 Customer.hasMany(CustomerDocument, { foreignKey: 'customerId' });
 CustomerDocument.belongsTo(Customer, { foreignKey: 'customerId' });
+Service.hasMany(CustomerDocument, { foreignKey: 'serviceId' });
+CustomerDocument.belongsTo(Service, { foreignKey: 'serviceId' });
 CustomerDocument.belongsTo(Booking, { foreignKey: 'bookingId' });
 CustomerDocument.belongsTo(ServiceDocumentLibrary, { foreignKey: 'documentId' });
 CustomerDocument.belongsTo(Pdf, { foreignKey: 'pdfId' });

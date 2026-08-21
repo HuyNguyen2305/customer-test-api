@@ -9,7 +9,7 @@ function buildRepository({ withBooking = false } = {}) {
   const scopedItemModel = {};
   const repository = Object.create(CustomerEstimateRepository.prototype);
   repository.model = model;
-  repository.customerEstimateItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
+  repository.customerLineItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
   if (withBooking) {
     const scopedBookingModel = {};
     repository.bookingModel = { schema: jest.fn().mockReturnValue(scopedBookingModel) };

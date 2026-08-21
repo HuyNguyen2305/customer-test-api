@@ -1,11 +1,10 @@
 import { NotFoundError } from '#configs/error.js';
 
 class JobSnapshotService {
-  constructor({ bookingRepository, todoListRepository, materialRepository, jobMaterialRepository, todoRepository }) {
+  constructor({ bookingRepository, todoListRepository, materialRepository, todoRepository }) {
     this.bookingRepository = bookingRepository;
     this.todoListRepository = todoListRepository;
     this.materialRepository = materialRepository;
-    this.jobMaterialRepository = jobMaterialRepository;
     this.todoRepository = todoRepository;
   }
 
@@ -17,7 +16,7 @@ class JobSnapshotService {
     const todoLists = await this.todoListRepository.findByServiceId(booking.serviceId);
 
     if (materials.length) {
-      await this.jobMaterialRepository.bulkCreate(
+      await this.materialRepository.bulkCreate(
         materials.map((material) => ({
           bookingId,
           materialId: material.materialId,
@@ -25,7 +24,6 @@ class JobSnapshotService {
           unitsTypeId: material.unitsTypeId,
           dilution: material.dilution,
           methodId: material.methodId,
-          customMaterialId: material.customMaterialId,
           locationId: material.locationId,
           targetPestId: material.targetPestId,
           sortOrder: material.sortOrder,

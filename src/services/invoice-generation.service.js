@@ -13,7 +13,7 @@ class InvoiceGenerationService {
     serviceInvoiceRepository,
     addressRepository,
     invoiceItemRepository,
-    customerInvoiceItemRepository,
+    customerLineItemRepository,
     taxRateRepository,
     customerEstimateRepository,
   }) {
@@ -23,7 +23,7 @@ class InvoiceGenerationService {
     this.serviceInvoiceRepository = serviceInvoiceRepository;
     this.addressRepository = addressRepository;
     this.invoiceItemRepository = invoiceItemRepository;
-    this.customerInvoiceItemRepository = customerInvoiceItemRepository;
+    this.customerLineItemRepository = customerLineItemRepository;
     this.taxRateRepository = taxRateRepository;
     this.customerEstimateRepository = customerEstimateRepository;
   }
@@ -33,9 +33,9 @@ class InvoiceGenerationService {
   // attachAutoTax, or copyEstimateLineItems) - refetches the current full
   // set and rewrites each one's subtotal/tax/total columns.
   async recomputeInvoiceItems(invoice, options = {}) {
-    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, options);
+    const items = await this.customerLineItemRepository.listByParent(invoice.id, 'invoice', options);
     const patches = recomputeItems(items.map(flattenTaxSlots), invoice).map(nestTaxSlotsPatch);
-    await this.customerInvoiceItemRepository.updateMany(patches, options);
+    await this.customerLineItemRepository.updateMany(patches, options);
   }
 
   // Copies the booking's address onto the invoice at generation time, frozen from
@@ -69,9 +69,10 @@ class InvoiceGenerationService {
     const templateItems = await this.invoiceItemRepository.listByServiceInvoiceId(sourceInvoiceId);
     if (!templateItems.length) return;
 
-    await this.customerInvoiceItemRepository.bulkCreateItems(
+    await this.customerLineItemRepository.bulkCreateItems(
       templateItems.map((item) => ({
-        customerInvoiceId: invoice.id,
+        parentId: invoice.id,
+        parentType: 'invoice',
         itemId: item.itemId,
         description: item.description,
         cost: item.cost,
@@ -93,10 +94,10 @@ class InvoiceGenerationService {
     const taxRate = await this.taxRateRepository.findByState(state);
     if (!taxRate) return;
 
-    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, options);
+    const items = await this.customerLineItemRepository.listByParent(invoice.id, 'invoice', options);
     if (!items.length) return;
 
-    await this.customerInvoiceItemRepository.updateMany(
+    await this.customerLineItemRepository.updateMany(
       items.map((item) => ({
         id: item.id,
         taxSlots: { ...item.taxSlots, tax1RateId: taxRate.id, tax1Name: taxRate.name, tax1Rate: taxRate.rate },
@@ -128,9 +129,10 @@ class InvoiceGenerationService {
   async copyEstimateLineItems(invoice, items, options = {}) {
     if (!items?.length) return;
 
-    await this.customerInvoiceItemRepository.bulkCreateItems(
+    await this.customerLineItemRepository.bulkCreateItems(
       items.map((item) => ({
-        customerInvoiceId: invoice.id,
+        parentId: invoice.id,
+        parentType: 'invoice',
         itemId: item.itemId,
         description: item.description,
         cost: item.cost,

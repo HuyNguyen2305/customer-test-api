@@ -12,7 +12,7 @@ describe('CustomerInvoiceRepository.findByIdForPdf', () => {
     const scopedCustomerModel = {};
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
     repository.customerModel = { schema: jest.fn().mockReturnValue(scopedCustomerModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>

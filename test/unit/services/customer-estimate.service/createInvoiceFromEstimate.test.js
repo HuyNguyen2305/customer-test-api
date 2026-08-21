@@ -20,7 +20,7 @@ const baseEstimate = {
 
 function buildService() {
   const service = Object.create(CustomerEstimateService.prototype);
-  service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  service.customerLineItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
   return service;
 }
 

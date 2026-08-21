@@ -13,7 +13,7 @@ const { NotFoundError, ConflictError } = await import('#configs/error.js');
 function buildInvoiceItemRepository({ updated, listed = [], final } = {}) {
   return {
     updateItem: jest.fn().mockResolvedValue(updated),
-    listByInvoiceId: jest.fn().mockResolvedValue(listed),
+    listByParent: jest.fn().mockResolvedValue(listed),
     updateMany: jest.fn().mockResolvedValue(undefined),
     findByPk: jest.fn().mockResolvedValue(final ?? updated),
   };
@@ -28,13 +28,14 @@ describe('CustomerInvoiceItemService.updateItem', () => {
         .fn()
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated, final: updated });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ updated, final: updated });
 
     const result = await service.updateItem('c1', 'i1', 'ii1', { qty: 3 });
 
-    expect(service.customerInvoiceItemRepository.updateItem).toHaveBeenCalledWith(
+    expect(service.customerLineItemRepository.updateItem).toHaveBeenCalledWith(
       'ii1',
       'i1',
+      'invoice',
       { description: undefined, qty: 3, sortOrder: undefined },
       { transaction: FAKE_TRANSACTION },
     );
@@ -48,11 +49,11 @@ describe('CustomerInvoiceItemService.updateItem', () => {
         .fn()
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated: { id: 'ii1' } });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ updated: { id: 'ii1' } });
 
     await service.updateItem('c1', 'i1', 'ii1', { qty: 2, cost: -9999 });
 
-    const [, , calledData] = service.customerInvoiceItemRepository.updateItem.mock.calls[0];
+    const [, , , calledData] = service.customerLineItemRepository.updateItem.mock.calls[0];
     expect(calledData).not.toHaveProperty('cost');
   });
 
@@ -65,17 +66,17 @@ describe('CustomerInvoiceItemService.updateItem', () => {
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 20 }),
     };
     const sibling = { id: 'ii2', cost: 30, qty: 1, taxSlots: { tax1Rate: 5 } };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({
+    service.customerLineItemRepository = buildInvoiceItemRepository({
       updated,
       listed: [{ id: 'ii1', cost: 50, qty: 2, taxSlots: { tax1Rate: null } }, sibling],
     });
 
     await service.updateItem('c1', 'i1', 'ii1', { qty: 2 });
 
-    expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('i1', {
+    expect(service.customerLineItemRepository.listByParent).toHaveBeenCalledWith('i1', 'invoice', {
       transaction: FAKE_TRANSACTION,
     });
-    expect(service.customerInvoiceItemRepository.updateMany).toHaveBeenCalled();
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalled();
   });
 
   it('throws ConflictError when the invoice is not a draft', async () => {
@@ -83,10 +84,10 @@ describe('CustomerInvoiceItemService.updateItem', () => {
     service.customerInvoiceRepository = {
       findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'paid' }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository();
+    service.customerLineItemRepository = buildInvoiceItemRepository();
 
     await expect(service.updateItem('c1', 'i1', 'ii1', { qty: 2 })).rejects.toThrow(ConflictError);
-    expect(service.customerInvoiceItemRepository.updateItem).not.toHaveBeenCalled();
+    expect(service.customerLineItemRepository.updateItem).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundError when the item does not exist on that invoice', async () => {
@@ -94,7 +95,7 @@ describe('CustomerInvoiceItemService.updateItem', () => {
     service.customerInvoiceRepository = {
       findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ updated: null });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ updated: null });
 
     await expect(service.updateItem('c1', 'i1', 'missing-item', { qty: 2 })).rejects.toThrow(NotFoundError);
   });

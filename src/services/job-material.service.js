@@ -1,14 +1,14 @@
 import { NotFoundError } from '#configs/error.js';
 
 class JobMaterialService {
-  constructor({ jobMaterialRepository }) {
-    this.jobMaterialRepository = jobMaterialRepository;
+  constructor({ materialRepository }) {
+    this.materialRepository = materialRepository;
   }
 
   async updateJobMaterial(id, data) {
-    const [affectedCount] = await this.jobMaterialRepository.updateOne(id, data);
+    const [affectedCount] = await this.materialRepository.updateOne(id, data);
     if (!affectedCount) throw new NotFoundError('Job material not found');
-    return this.jobMaterialRepository.findByPk(id);
+    return this.materialRepository.findByPk(id);
   }
 }
 

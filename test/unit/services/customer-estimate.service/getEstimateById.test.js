@@ -30,7 +30,7 @@ const baseEstimate = {
 
 function buildService() {
   const service = Object.create(CustomerEstimateService.prototype);
-  service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  service.customerLineItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
   service.taxRateRepository = { findByIds: jest.fn().mockResolvedValue([]) };
   return service;
 }
@@ -43,7 +43,7 @@ describe('CustomerEstimateService.getEstimateById', () => {
     const result = await service.getEstimateById('e1', 'c1');
 
     expect(service.customerEstimateRepository.findByIdForCustomer).toHaveBeenCalledWith('e1', 'c1');
-    expect(service.customerEstimateItemRepository.updateMany).toHaveBeenCalledWith([], {
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalledWith([], {
       transaction: FAKE_TRANSACTION,
     });
     expect(result).toEqual({
@@ -151,7 +151,7 @@ describe('CustomerEstimateService.getEstimateById', () => {
     expect(result.taxableAmount).toBe(150);
     expect(result.taxTotal).toBe(12); // 150 * 8%, not 200 * 8% = 16
     expect(result.total).toBe(162);
-    expect(service.customerEstimateItemRepository.updateMany).toHaveBeenCalledWith(
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalledWith(
       [
         expect.objectContaining({
           id: 'ei1',

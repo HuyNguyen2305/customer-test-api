@@ -6,8 +6,8 @@ function buildService({ address = null } = {}) {
   const service = Object.create(InvoiceGenerationService.prototype);
   service.addressRepository = { getByIdForCustomer: jest.fn().mockResolvedValue(address) };
   service.taxRateRepository = { findByState: jest.fn().mockResolvedValue(null) };
-  service.customerInvoiceItemRepository = {
-    listByInvoiceId: jest.fn().mockResolvedValue([]),
+  service.customerLineItemRepository = {
+    listByParent: jest.fn().mockResolvedValue([]),
     updateMany: jest.fn().mockResolvedValue(undefined),
   };
   return service;
@@ -83,7 +83,7 @@ describe('InvoiceGenerationService.attachAutoTax', () => {
     const taxRate = { id: 'tax-ny', name: 'NY Sales Tax', rate: 4 };
     const service = buildService();
     service.taxRateRepository.findByState = jest.fn().mockResolvedValue(taxRate);
-    service.customerInvoiceItemRepository.listByInvoiceId = jest.fn().mockResolvedValue([
+    service.customerLineItemRepository.listByParent = jest.fn().mockResolvedValue([
       {
         id: 'ii1',
         taxSlots: { tax2RateId: 'tax-local', tax2Name: 'Local Tax', tax2Rate: 1.5 },
@@ -93,7 +93,7 @@ describe('InvoiceGenerationService.attachAutoTax', () => {
 
     await service.attachAutoTax({ id: 'inv1' }, addressSnapshot, {});
 
-    expect(service.customerInvoiceItemRepository.updateMany).toHaveBeenCalledWith(
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalledWith(
       [
         {
           id: 'ii1',

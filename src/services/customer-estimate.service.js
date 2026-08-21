@@ -59,13 +59,13 @@ export function toEstimateData(estimate) {
 class CustomerEstimateService {
   constructor({
     customerEstimateRepository,
-    customerEstimateItemRepository,
+    customerLineItemRepository,
     invoiceGenerationService,
     customerInvoiceService,
     taxRateRepository,
   }) {
     this.customerEstimateRepository = customerEstimateRepository;
-    this.customerEstimateItemRepository = customerEstimateItemRepository;
+    this.customerLineItemRepository = customerLineItemRepository;
     this.invoiceGenerationService = invoiceGenerationService;
     this.customerInvoiceService = customerInvoiceService;
     this.taxRateRepository = taxRateRepository;
@@ -100,9 +100,7 @@ class CustomerEstimateService {
     }
 
     const patches = recomputeItems(items.map(flattenTaxSlots), estimate).map(nestTaxSlotsPatch);
-    await sequelize.transaction((transaction) =>
-      this.customerEstimateItemRepository.updateMany(patches, { transaction }),
-    );
+    await sequelize.transaction((transaction) => this.customerLineItemRepository.updateMany(patches, { transaction }));
 
     const patchById = new Map(patches.map((patch) => [patch.id, patch]));
     for (const item of items) Object.assign(item, patchById.get(item.id));

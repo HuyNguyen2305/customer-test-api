@@ -1,21 +1,21 @@
 import { jest } from '@jest/globals';
 
-const { default: CustomerInvoiceItemRepository } = await import('#repositories/customer-invoice-item.repository.js');
+const { default: CustomerLineItemRepository } = await import('#repositories/customer-line-item.repository.js');
 const { requestContext } = await import('#common/request-context.js');
 
-describe('CustomerInvoiceItemRepository.listByInvoiceId', () => {
-  it('queries line items scoped to the invoice, ordered by sortOrder', async () => {
+describe('CustomerLineItemRepository.listByParent', () => {
+  it('queries line items scoped to the parent, ordered by sortOrder', async () => {
     const scopedModel = { findAll: jest.fn().mockResolvedValue([{ id: 'ii1' }]) };
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
-    const repository = Object.create(CustomerInvoiceItemRepository.prototype);
+    const repository = Object.create(CustomerLineItemRepository.prototype);
     repository.model = model;
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
-      repository.listByInvoiceId('i1'),
+      repository.listByParent('i1', 'invoice'),
     );
 
     expect(scopedModel.findAll).toHaveBeenCalledWith({
-      where: { customerInvoiceId: 'i1' },
+      where: { parentId: 'i1', parentType: 'invoice' },
       order: [['sortOrder', 'ASC']],
       attributes: { exclude: ['createdAt', 'updatedAt'] },
     });

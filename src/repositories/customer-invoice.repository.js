@@ -4,9 +4,9 @@ import { BaseRepository } from '#common/base-repository.js';
 const STATUS_ORDER = ['draft', 'sent', 'void', 'write_off', 'paid'];
 
 class CustomerInvoiceRepository extends BaseRepository {
-  constructor({ customerInvoiceModel, customerInvoiceItemModel, customerModel }) {
+  constructor({ customerInvoiceModel, customerLineItemModel, customerModel }) {
     super(customerInvoiceModel);
-    this.customerInvoiceItemModel = customerInvoiceItemModel;
+    this.customerLineItemModel = customerLineItemModel;
     this.customerModel = customerModel;
   }
 
@@ -48,7 +48,7 @@ class CustomerInvoiceRepository extends BaseRepository {
       // No 'address' join: toInvoiceData builds addressLabel/addressLine1/etc.
       // from the addressSnapshot JSONB column already on this row, never from
       // the associated Address.
-      include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
+      include: [{ model: this.scopeModel(this.customerLineItemModel), as: 'items' }],
       // Without this, the join to 'items' makes count() tally one row per
       // item instead of per invoice, inflating pagination totals for any
       // invoice with more than one line item.
@@ -62,7 +62,7 @@ class CustomerInvoiceRepository extends BaseRepository {
     return this.findOne({
       where: { id, customerId },
       attributes: { exclude: ['updatedAt'] },
-      include: [{ model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' }],
+      include: [{ model: this.scopeModel(this.customerLineItemModel), as: 'items' }],
     });
   }
 
@@ -73,7 +73,7 @@ class CustomerInvoiceRepository extends BaseRepository {
       where: { id, customerId },
       attributes: { exclude: ['updatedAt'] },
       include: [
-        { model: this.scopeModel(this.customerInvoiceItemModel), as: 'items' },
+        { model: this.scopeModel(this.customerLineItemModel), as: 'items' },
         { model: this.scopeModel(this.customerModel), as: 'Customer' },
       ],
     });

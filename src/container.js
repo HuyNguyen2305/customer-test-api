@@ -13,7 +13,6 @@ import ServiceRecurrenceRepository from '#repositories/service-recurrence.reposi
 import TodoListRepository from '#repositories/todo-list.repository.js';
 import TodoRepository from '#repositories/todo.repository.js';
 import MaterialRepository from '#repositories/material.repository.js';
-import JobMaterialRepository from '#repositories/job-material.repository.js';
 import CustomerInvoiceRepository from '#repositories/customer-invoice.repository.js';
 import InvoiceFrequencyRepository from '#repositories/invoice-frequency.repository.js';
 import ServiceInvoiceRepository from '#repositories/service-invoice.repository.js';
@@ -25,8 +24,7 @@ import CustomerDocumentRepository from '#repositories/customer-document.reposito
 import AddressRepository from '#repositories/address.repository.js';
 import TaxRateRepository from '#repositories/tax-rate.repository.js';
 import InvoiceItemRepository from '#repositories/invoice-item.repository.js';
-import CustomerInvoiceItemRepository from '#repositories/customer-invoice-item.repository.js';
-import CustomerEstimateItemRepository from '#repositories/customer-estimate-item.repository.js';
+import CustomerLineItemRepository from '#repositories/customer-line-item.repository.js';
 import ItemRepository from '#repositories/item.repository.js';
 
 import AuthService from '#service/auth.service.js';
@@ -71,7 +69,6 @@ container.register({
   todoListModel: asValue(models.TodoList),
   todoModel: asValue(models.Todo),
   materialModel: asValue(models.Material),
-  jobMaterialModel: asValue(models.JobMaterial),
   customerInvoiceModel: asValue(models.CustomerInvoice),
   invoiceFrequencyModel: asValue(models.InvoiceFrequency),
   serviceInvoiceModel: asValue(models.ServiceInvoice),
@@ -79,9 +76,8 @@ container.register({
   customerModel: asValue(models.Customer),
   revokedTokenModel: asValue(models.RevokedToken),
   addressModel: asValue(models.Address),
-  customerInvoiceItemModel: asValue(models.CustomerInvoiceItem),
   customerEstimateModel: asValue(models.CustomerEstimate),
-  customerEstimateItemModel: asValue(models.CustomerEstimateItem),
+  customerLineItemModel: asValue(models.CustomerLineItem),
   customerPaymentMethodModel: asValue(models.CustomerPaymentMethod),
   customerDocumentModel: asValue(models.CustomerDocument),
   serviceDocumentLibraryModel: asValue(models.ServiceDocumentLibrary),
@@ -99,7 +95,6 @@ container.register({
   [REPOSITORY_KEYS.TODO_LIST_REPOSITORY]: asClass(TodoListRepository).scoped(),
   [REPOSITORY_KEYS.TODO_REPOSITORY]: asClass(TodoRepository).scoped(),
   [REPOSITORY_KEYS.MATERIAL_REPOSITORY]: asClass(MaterialRepository).scoped(),
-  [REPOSITORY_KEYS.JOB_MATERIAL_REPOSITORY]: asClass(JobMaterialRepository).scoped(),
   [REPOSITORY_KEYS.CUSTOMER_INVOICE_REPOSITORY]: asClass(CustomerInvoiceRepository).scoped(),
   [REPOSITORY_KEYS.INVOICE_FREQUENCY_REPOSITORY]: asClass(InvoiceFrequencyRepository).scoped(),
   [REPOSITORY_KEYS.SERVICE_INVOICE_REPOSITORY]: asClass(ServiceInvoiceRepository).scoped(),
@@ -111,9 +106,8 @@ container.register({
   [REPOSITORY_KEYS.ADDRESS_REPOSITORY]: asClass(AddressRepository).scoped(),
   [REPOSITORY_KEYS.TAX_RATE_REPOSITORY]: asClass(TaxRateRepository).scoped(),
   [REPOSITORY_KEYS.INVOICE_ITEM_REPOSITORY]: asClass(InvoiceItemRepository).scoped(),
-  [REPOSITORY_KEYS.CUSTOMER_INVOICE_ITEM_REPOSITORY]: asClass(CustomerInvoiceItemRepository).scoped(),
   [REPOSITORY_KEYS.ITEM_REPOSITORY]: asClass(ItemRepository).scoped(),
-  [REPOSITORY_KEYS.CUSTOMER_ESTIMATE_ITEM_REPOSITORY]: asClass(CustomerEstimateItemRepository).scoped(),
+  [REPOSITORY_KEYS.CUSTOMER_LINE_ITEM_REPOSITORY]: asClass(CustomerLineItemRepository).scoped(),
 
   [SERVICE_KEYS.AUTH_SERVICE]: asClass(AuthService).scoped(),
   [SERVICE_KEYS.BALANCE_SERVICE]: asClass(BalanceService).scoped(),

@@ -283,16 +283,6 @@ customer_invoices
 ├── status                enum        # draft | sent | paid | overdue
 └── balance_due            decimal
 
-customer_invoice_items                 # same shape as invoice_items
-├── id                    PK
-├── customer_invoice_id   FK -> customer_invoices
-├── item_id               FK -> items
-├── description           text
-├── cost                  decimal
-├── tax_rate_id           FK -> tax_rates, null
-├── qty                   int
-└── sort_order              int
-
 customer_estimates                     # same pattern as customer_invoices
 ├── id                    PK
 ├── booking_id            FK -> bookings
@@ -307,15 +297,18 @@ customer_estimates                     # same pattern as customer_invoices
 ├── notes_text            richtext
 └── status                enum
 
-customer_estimate_items                # same shape as estimate_items
+customer_line_items                    # shared by customer_invoices and customer_estimates
 ├── id                    PK
-├── customer_estimate_id  FK -> customer_estimates
+├── parent_id             no FK — see parent_type   # approved polymorphic exception, root CLAUDE.md
+├── parent_type           enum        # 'estimate' | 'invoice'
 ├── item_id               FK -> items
 ├── description           text
 ├── cost                  decimal
-├── tax_rate_id           FK -> tax_rates, null
 ├── qty                   int
-└── sort_order              int
+├── sort_order            int
+├── subtotal              decimal, null
+├── tax_slots             jsonb, null  # tax1/tax2 rate id/name/rate/total snapshot
+└── total                 decimal, null
 
 customer_documents
 ├── id                    PK
@@ -358,9 +351,9 @@ services (1) ─┬─ (1) service_recurrences
                └─ (many) todo_lists ── (many) todos
 
 customers (1) ─┬─ (many) bookings ── (1) services
-                ├─ (many) customer_invoices ── (many) customer_invoice_items
+                ├─ (many) customer_invoices ── (many) customer_line_items [parent_type='invoice']
                 │        └─ sourced from invoices (template)
-                ├─ (many) customer_estimates ── (many) customer_estimate_items
+                ├─ (many) customer_estimates ── (many) customer_line_items [parent_type='estimate']
                 │        └─ sourced from estimates (template)
                 ├─ (many) customer_documents
                 ├─ (many) customer_ledger_entries   [balance]
@@ -393,6 +386,6 @@ note_templates (shared, filtered by category) ── referenced by invoices, est
 7. `todo_lists` + `todos`
 8. `customers`
 9. `bookings`
-10. `customer_invoices` + `customer_invoice_items`, `customer_estimates` + `customer_estimate_items`, `customer_documents`, `customer_ledger_entries`, `customer_payment_methods`
+10. `customer_invoices` + `customer_estimates` + `customer_line_items` (shared, `parent_type`-discriminated), `customer_documents`, `customer_ledger_entries`, `customer_payment_methods`
 
 Resolve Open Question #1 before starting step 10, since it changes the shape of everything in that step.

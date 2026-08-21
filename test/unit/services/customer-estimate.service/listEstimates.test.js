@@ -40,7 +40,7 @@ const estimateRow = {
 
 function buildService() {
   const service = Object.create(CustomerEstimateService.prototype);
-  service.customerEstimateItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
+  service.customerLineItemRepository = { updateMany: jest.fn().mockResolvedValue(undefined) };
   service.taxRateRepository = { findByIds: jest.fn().mockResolvedValue([]) };
   return service;
 }
@@ -62,7 +62,7 @@ describe('CustomerEstimateService.listEstimates', () => {
       addressId: undefined,
       statuses: ['sent', 'approved'],
     });
-    expect(service.customerEstimateItemRepository.updateMany).toHaveBeenCalled();
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalled();
     expect(result).toEqual({
       estimates: [
         {

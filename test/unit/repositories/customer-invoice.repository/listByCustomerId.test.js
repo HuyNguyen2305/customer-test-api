@@ -11,7 +11,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const scopedItemModel = {};
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue(scopedItemModel) };
 
     const result = await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0 }),
@@ -36,7 +36,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, addressId: 'a1', status: 'sent' }),
@@ -51,7 +51,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, statusOrder: 'asc' }),
@@ -71,7 +71,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0, statusOrder: 'desc' }),
@@ -86,7 +86,7 @@ describe('CustomerInvoiceRepository.listByCustomerId', () => {
     const model = { schema: jest.fn().mockReturnValue(scopedModel) };
     const repository = Object.create(CustomerInvoiceRepository.prototype);
     repository.model = model;
-    repository.customerInvoiceItemModel = { schema: jest.fn().mockReturnValue({}) };
+    repository.customerLineItemModel = { schema: jest.fn().mockReturnValue({}) };
 
     await requestContext.run(new Map([['identity', { schema: 'tenant_x' }]]), () =>
       repository.listByCustomerId('c1', { limit: 20, offset: 0 }),

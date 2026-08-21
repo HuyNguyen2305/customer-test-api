@@ -9,7 +9,11 @@ export default (sequelize, DataTypes) => {
       },
       serviceId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
+      },
+      bookingId: {
+        type: DataTypes.UUID,
+        allowNull: true,
       },
       materialId: {
         type: DataTypes.UUID,
@@ -32,10 +36,6 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
-      customMaterialId: {
-        type: DataTypes.UUID,
-        allowNull: true,
-      },
       locationId: {
         type: DataTypes.UUID,
         allowNull: true,
@@ -48,6 +48,11 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
+      },
+      isCustomized: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
     },
     {

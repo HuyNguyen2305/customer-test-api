@@ -8,7 +8,6 @@ export const REPOSITORY_KEYS = {
   TODO_LIST_REPOSITORY: 'todoListRepository',
   TODO_REPOSITORY: 'todoRepository',
   MATERIAL_REPOSITORY: 'materialRepository',
-  JOB_MATERIAL_REPOSITORY: 'jobMaterialRepository',
   CUSTOMER_INVOICE_REPOSITORY: 'customerInvoiceRepository',
   INVOICE_FREQUENCY_REPOSITORY: 'invoiceFrequencyRepository',
   SERVICE_INVOICE_REPOSITORY: 'serviceInvoiceRepository',
@@ -20,9 +19,8 @@ export const REPOSITORY_KEYS = {
   ADDRESS_REPOSITORY: 'addressRepository',
   TAX_RATE_REPOSITORY: 'taxRateRepository',
   INVOICE_ITEM_REPOSITORY: 'invoiceItemRepository',
-  CUSTOMER_INVOICE_ITEM_REPOSITORY: 'customerInvoiceItemRepository',
   ITEM_REPOSITORY: 'itemRepository',
-  CUSTOMER_ESTIMATE_ITEM_REPOSITORY: 'customerEstimateItemRepository',
+  CUSTOMER_LINE_ITEM_REPOSITORY: 'customerLineItemRepository',
 };
 
 export const SERVICE_KEYS = {

@@ -1,9 +1,8 @@
 class JobSyncService {
-  constructor({ bookingRepository, materialRepository, todoListRepository, jobMaterialRepository, todoRepository }) {
+  constructor({ bookingRepository, materialRepository, todoListRepository, todoRepository }) {
     this.bookingRepository = bookingRepository;
     this.materialRepository = materialRepository;
     this.todoListRepository = todoListRepository;
-    this.jobMaterialRepository = jobMaterialRepository;
     this.todoRepository = todoRepository;
   }
 
@@ -14,7 +13,7 @@ class JobSyncService {
 
     for (const booking of bookings) {
       const [jobMaterials, jobTodoLists, materials, todoLists] = await Promise.all([
-        this.jobMaterialRepository.findByBookingId(booking.id),
+        this.materialRepository.findByBookingId(booking.id),
         this.todoListRepository.findByBookingId(booking.id),
         this.materialRepository.findByServiceId(booking.serviceId),
         this.todoListRepository.findByServiceId(booking.serviceId),
@@ -28,9 +27,9 @@ class JobSyncService {
       const bookingSkipped = customizedMaterials.length > 0 || customizedTodos.length > 0;
 
       if (customizedMaterials.length === 0) {
-        await this.jobMaterialRepository.deleteByBookingId(booking.id);
+        await this.materialRepository.deleteByBookingId(booking.id);
         if (materials.length) {
-          await this.jobMaterialRepository.bulkCreate(
+          await this.materialRepository.bulkCreate(
             materials.map((material) => ({
               bookingId: booking.id,
               materialId: material.materialId,
@@ -38,7 +37,6 @@ class JobSyncService {
               unitsTypeId: material.unitsTypeId,
               dilution: material.dilution,
               methodId: material.methodId,
-              customMaterialId: material.customMaterialId,
               locationId: material.locationId,
               targetPestId: material.targetPestId,
               sortOrder: material.sortOrder,

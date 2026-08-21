@@ -13,7 +13,7 @@ const { NotFoundError, ConflictError } = await import('#configs/error.js');
 function buildInvoiceItemRepository({ deleted, listed = [] } = {}) {
   return {
     deleteItem: jest.fn().mockResolvedValue(deleted),
-    listByInvoiceId: jest.fn().mockResolvedValue(listed),
+    listByParent: jest.fn().mockResolvedValue(listed),
     updateMany: jest.fn().mockResolvedValue(undefined),
   };
 }
@@ -26,11 +26,11 @@ describe('CustomerInvoiceItemService.removeItem', () => {
         .fn()
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: true });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ deleted: true });
 
     await service.removeItem('c1', 'i1', 'ii1');
 
-    expect(service.customerInvoiceItemRepository.deleteItem).toHaveBeenCalledWith('ii1', 'i1', {
+    expect(service.customerLineItemRepository.deleteItem).toHaveBeenCalledWith('ii1', 'i1', 'invoice', {
       transaction: FAKE_TRANSACTION,
     });
   });
@@ -43,14 +43,14 @@ describe('CustomerInvoiceItemService.removeItem', () => {
         .mockResolvedValue({ id: 'i1', status: 'draft', discountType: 'flat', discountValue: 0 }),
     };
     const remaining = { id: 'ii2', cost: 30, qty: 1, taxSlots: { tax1Rate: 5 } };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: true, listed: [remaining] });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ deleted: true, listed: [remaining] });
 
     await service.removeItem('c1', 'i1', 'ii1');
 
-    expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('i1', {
+    expect(service.customerLineItemRepository.listByParent).toHaveBeenCalledWith('i1', 'invoice', {
       transaction: FAKE_TRANSACTION,
     });
-    expect(service.customerInvoiceItemRepository.updateMany).toHaveBeenCalledWith(
+    expect(service.customerLineItemRepository.updateMany).toHaveBeenCalledWith(
       [expect.objectContaining({ id: 'ii2' })],
       { transaction: FAKE_TRANSACTION },
     );
@@ -61,10 +61,10 @@ describe('CustomerInvoiceItemService.removeItem', () => {
     service.customerInvoiceRepository = {
       findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'void' }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository();
+    service.customerLineItemRepository = buildInvoiceItemRepository();
 
     await expect(service.removeItem('c1', 'i1', 'ii1')).rejects.toThrow(ConflictError);
-    expect(service.customerInvoiceItemRepository.deleteItem).not.toHaveBeenCalled();
+    expect(service.customerLineItemRepository.deleteItem).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundError when the item does not exist on that invoice', async () => {
@@ -72,7 +72,7 @@ describe('CustomerInvoiceItemService.removeItem', () => {
     service.customerInvoiceRepository = {
       findSummaryByIdForCustomer: jest.fn().mockResolvedValue({ id: 'i1', status: 'draft' }),
     };
-    service.customerInvoiceItemRepository = buildInvoiceItemRepository({ deleted: false });
+    service.customerLineItemRepository = buildInvoiceItemRepository({ deleted: false });
 
     await expect(service.removeItem('c1', 'i1', 'missing-item')).rejects.toThrow(NotFoundError);
   });

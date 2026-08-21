@@ -13,10 +13,9 @@ export function toNumberOrNull(value) {
   return value == null ? null : Number(value);
 }
 
-// customer_invoice_items persists its tax1*/tax2* fields nested under one
-// taxSlots JSONB column, but the math below is shared with customer_estimate_items
-// (which stays flat) - these two adapters keep that shared math working on a
-// flat shape regardless, translating only at the invoice-item call sites.
+// customer_line_items (shared by estimates and invoices) persists tax1*/tax2*
+// fields nested under one taxSlots JSONB column, but the math below operates
+// on a flat shape - these two adapters translate at each call site.
 //
 // item.get({ plain: true }) rather than a bare spread: Sequelize instances
 // expose attributes as prototype getters backed by dataValues, not as own

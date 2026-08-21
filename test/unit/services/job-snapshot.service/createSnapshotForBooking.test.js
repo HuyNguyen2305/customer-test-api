@@ -6,9 +6,11 @@ const { NotFoundError } = await import('#configs/error.js');
 function buildService({ booking, materials = [], todoLists = [] } = {}) {
   const service = Object.create(JobSnapshotService.prototype);
   service.bookingRepository = { findByPk: jest.fn().mockResolvedValue(booking) };
-  service.materialRepository = { findByServiceId: jest.fn().mockResolvedValue(materials) };
+  service.materialRepository = {
+    findByServiceId: jest.fn().mockResolvedValue(materials),
+    bulkCreate: jest.fn().mockResolvedValue(undefined),
+  };
   service.todoListRepository = { findByServiceId: jest.fn().mockResolvedValue(todoLists), create: jest.fn() };
-  service.jobMaterialRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
   service.todoRepository = { bulkCreate: jest.fn().mockResolvedValue(undefined) };
   return service;
 }
@@ -29,7 +31,6 @@ describe('JobSnapshotService.createSnapshotForBooking', () => {
         unitsTypeId: 'u1',
         dilution: '1:10',
         methodId: 'meth1',
-        customMaterialId: null,
         locationId: 'loc1',
         targetPestId: 'pest1',
         sortOrder: 0,
@@ -39,7 +40,7 @@ describe('JobSnapshotService.createSnapshotForBooking', () => {
 
     await service.createSnapshotForBooking('b1');
 
-    expect(service.jobMaterialRepository.bulkCreate).toHaveBeenCalledWith([
+    expect(service.materialRepository.bulkCreate).toHaveBeenCalledWith([
       {
         bookingId: 'b1',
         materialId: 'm1',
@@ -47,7 +48,6 @@ describe('JobSnapshotService.createSnapshotForBooking', () => {
         unitsTypeId: 'u1',
         dilution: '1:10',
         methodId: 'meth1',
-        customMaterialId: null,
         locationId: 'loc1',
         targetPestId: 'pest1',
         sortOrder: 0,

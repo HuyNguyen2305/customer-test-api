@@ -8,7 +8,7 @@ import { recomputeItems, toNumberOrNull, flattenTaxSlots, nestTaxSlotsPatch } fr
 function toLineItemData(item) {
   return {
     id: item.id,
-    customerInvoiceId: item.customerInvoiceId,
+    customerInvoiceId: item.parentId,
     itemId: item.itemId,
     description: item.description,
     cost: toNumberOrNull(item.cost),
@@ -28,8 +28,8 @@ function toLineItemData(item) {
 }
 
 class CustomerInvoiceItemService {
-  constructor({ customerInvoiceItemRepository, customerInvoiceRepository, itemRepository }) {
-    this.customerInvoiceItemRepository = customerInvoiceItemRepository;
+  constructor({ customerLineItemRepository, customerInvoiceRepository, itemRepository }) {
+    this.customerLineItemRepository = customerLineItemRepository;
     this.customerInvoiceRepository = customerInvoiceRepository;
     this.itemRepository = itemRepository;
   }
@@ -50,7 +50,7 @@ class CustomerInvoiceItemService {
 
   async listItems(customerId, invoiceId) {
     await this.requireOwnedDraftInvoice(customerId, invoiceId);
-    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoiceId);
+    const items = await this.customerLineItemRepository.listByParent(invoiceId, 'invoice');
     return items.map(toLineItemData);
   }
 
@@ -59,9 +59,9 @@ class CustomerInvoiceItemService {
   // sibling's taxable base - refetch the current full set inside the same
   // transaction and rewrite each one's subtotal/tax/total columns.
   async recomputeInvoiceItems(invoice, transaction) {
-    const items = await this.customerInvoiceItemRepository.listByInvoiceId(invoice.id, { transaction });
+    const items = await this.customerLineItemRepository.listByParent(invoice.id, 'invoice', { transaction });
     const patches = recomputeItems(items.map(flattenTaxSlots), invoice).map(nestTaxSlotsPatch);
-    await this.customerInvoiceItemRepository.updateMany(patches, { transaction });
+    await this.customerLineItemRepository.updateMany(patches, { transaction });
   }
 
   // cost is never accepted from the caller - a customer chooses which item and
@@ -76,12 +76,12 @@ class CustomerInvoiceItemService {
     if (!item) throw new NotFoundError('Item not found');
 
     return sequelize.transaction(async (transaction) => {
-      const created = await this.customerInvoiceItemRepository.createItem(
-        { customerInvoiceId: invoiceId, itemId, description, cost: item.defaultCost, qty, sortOrder },
+      const created = await this.customerLineItemRepository.createItem(
+        { parentId: invoiceId, parentType: 'invoice', itemId, description, cost: item.defaultCost, qty, sortOrder },
         { transaction },
       );
       await this.recomputeInvoiceItems(invoice, transaction);
-      const final = await this.customerInvoiceItemRepository.findByPk(created.id, { transaction });
+      const final = await this.customerLineItemRepository.findByPk(created.id, { transaction });
       return toLineItemData(final);
     });
   }
@@ -93,15 +93,16 @@ class CustomerInvoiceItemService {
     const invoice = await this.requireEditableInvoice(customerId, invoiceId);
 
     return sequelize.transaction(async (transaction) => {
-      const updated = await this.customerInvoiceItemRepository.updateItem(
+      const updated = await this.customerLineItemRepository.updateItem(
         itemId,
         invoiceId,
+        'invoice',
         { description, qty, sortOrder },
         { transaction },
       );
       if (!updated) throw new NotFoundError('Line item not found');
       await this.recomputeInvoiceItems(invoice, transaction);
-      const final = await this.customerInvoiceItemRepository.findByPk(itemId, { transaction });
+      const final = await this.customerLineItemRepository.findByPk(itemId, { transaction });
       return toLineItemData(final);
     });
   }
@@ -110,7 +111,7 @@ class CustomerInvoiceItemService {
     const invoice = await this.requireEditableInvoice(customerId, invoiceId);
 
     return sequelize.transaction(async (transaction) => {
-      const deleted = await this.customerInvoiceItemRepository.deleteItem(itemId, invoiceId, { transaction });
+      const deleted = await this.customerLineItemRepository.deleteItem(itemId, invoiceId, 'invoice', { transaction });
       if (!deleted) throw new NotFoundError('Line item not found');
       await this.recomputeInvoiceItems(invoice, transaction);
     });

@@ -1,16 +1,9 @@
 import { BaseRepository } from '#common/base-repository.js';
 
 class CustomerEstimateRepository extends BaseRepository {
-  constructor({
-    customerEstimateModel,
-    customerEstimateItemModel,
-    bookingModel,
-    addressModel,
-    customerModel,
-    itemModel,
-  }) {
+  constructor({ customerEstimateModel, customerLineItemModel, bookingModel, addressModel, customerModel, itemModel }) {
     super(customerEstimateModel);
-    this.customerEstimateItemModel = customerEstimateItemModel;
+    this.customerLineItemModel = customerLineItemModel;
     this.bookingModel = bookingModel;
     this.addressModel = addressModel;
     this.customerModel = customerModel;
@@ -30,7 +23,7 @@ class CustomerEstimateRepository extends BaseRepository {
       // even though it stays in the query (same fix as the invoice repository).
       attributes: { exclude: ['updatedAt'] },
       include: [
-        { model: this.scopeModel(this.customerEstimateItemModel), as: 'items' },
+        { model: this.scopeModel(this.customerLineItemModel), as: 'items' },
         ...(addressId
           ? [{ model: this.scopeModel(this.bookingModel), attributes: [], where: { addressId }, required: true }]
           : []),
@@ -55,7 +48,7 @@ class CustomerEstimateRepository extends BaseRepository {
       attributes: { exclude: ['updatedAt'] },
       include: [
         {
-          model: this.scopeModel(this.customerEstimateItemModel),
+          model: this.scopeModel(this.customerLineItemModel),
           as: 'items',
           include: [{ model: this.scopeModel(this.itemModel), attributes: ['name'] }],
         },
@@ -72,7 +65,7 @@ class CustomerEstimateRepository extends BaseRepository {
       attributes: { exclude: ['updatedAt'] },
       include: [
         {
-          model: this.scopeModel(this.customerEstimateItemModel),
+          model: this.scopeModel(this.customerLineItemModel),
           as: 'items',
           include: [{ model: this.scopeModel(this.itemModel), attributes: ['name'] }],
         },

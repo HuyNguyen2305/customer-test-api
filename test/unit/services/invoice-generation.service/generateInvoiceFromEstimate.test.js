@@ -12,9 +12,9 @@ function buildService({ existingInvoice = null, booking = null, created, invoice
     createInvoice: jest.fn().mockResolvedValue(created),
   };
   service.addressRepository = { getByIdForCustomer: jest.fn().mockResolvedValue(null) };
-  service.customerInvoiceItemRepository = {
+  service.customerLineItemRepository = {
     bulkCreateItems: jest.fn().mockResolvedValue([]),
-    listByInvoiceId: jest.fn().mockResolvedValue(invoiceItems),
+    listByParent: jest.fn().mockResolvedValue(invoiceItems),
     updateMany: jest.fn().mockResolvedValue(undefined),
   };
   service.customerEstimateRepository = { updateStatus: jest.fn().mockResolvedValue([1]) };
@@ -117,10 +117,11 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
 
     await service.generateInvoiceFromEstimate(estimate, 'c1');
 
-    expect(service.customerInvoiceItemRepository.bulkCreateItems).toHaveBeenCalledWith(
+    expect(service.customerLineItemRepository.bulkCreateItems).toHaveBeenCalledWith(
       [
         {
-          customerInvoiceId: 'inv1',
+          parentId: 'inv1',
+          parentType: 'invoice',
           itemId: 'item1',
           description: 'Treatment',
           cost: 80,
@@ -163,8 +164,8 @@ describe('InvoiceGenerationService.generateInvoiceFromEstimate', () => {
 
     await service.generateInvoiceFromEstimate(estimate, 'c1');
 
-    expect(service.customerInvoiceItemRepository.listByInvoiceId).toHaveBeenCalledWith('inv1', expect.anything());
-    const [patches] = service.customerInvoiceItemRepository.updateMany.mock.calls[0];
+    expect(service.customerLineItemRepository.listByParent).toHaveBeenCalledWith('inv1', 'invoice', expect.anything());
+    const [patches] = service.customerLineItemRepository.updateMany.mock.calls[0];
     expect(patches).toEqual([
       expect.objectContaining({ id: 'ii1', total: 83.2, taxSlots: expect.objectContaining({ tax1Total: 3.2 }) }),
     ]);
